@@ -1,0 +1,32 @@
+{
+  "name": "saleha-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cap:build": "vite build && cap sync android",
+    "cap:open": "cap open android",
+    "firebase": "firebase",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:hosting": "npm run build && firebase deploy --only hosting"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@lucide/vue": "^1.48.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "firebase": "^12.19.0",
+    "lucide-vue-next": "^1.0.0",
+    "tailwindcss": "^4.3.3",
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "firebase-tools": "^15.31.0",
+    "vite": "^8.3.0"
+  }
+}

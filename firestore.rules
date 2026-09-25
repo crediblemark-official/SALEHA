@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function cek apakah user adalah Admin LPNU
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.email.matches('.*@lpnu-sumenep\\.or\\.id$') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Helper function cek kepemilikan dokumen oleh UMKM
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Health check ping untuk uji koneksi aplikasi
+    match /_health/{docId} {
+      allow read, write: if true;
+    }
+
+    // Koleksi Permohonan Legalitas UMKM
+    match /permohonan/{ticketDoc} {
+      // Admin LPNU bisa membaca semua permohonan; UMKM hanya bisa membaca permohonannya sendiri
+      allow read: if isAdmin() || (request.auth != null && resource.data.user_id == request.auth.uid);
+      
+      // Pembuatan permohonan baru oleh UMKM yang terotentikasi
+      allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+      
+      // Update data:
+      // - UMKM hanya boleh update foto/catatan perbaikan jika status BUTUH_REVISI
+      // - Admin boleh update status, catatan_lpnu, pdf_hasil_url, dan operator_assigned
+      allow update: if isAdmin() || (
+        isOwner(resource.data.user_id) && 
+        resource.data.status == 'BUTUH_REVISI' &&
+        request.resource.data.user_id == resource.data.user_id
+      );
+
+      // Hanya Super Admin LPNU yang boleh menghapus dokumen
+      allow delete: if isAdmin();
+    }
+
+    // Koleksi User UMKM Profiles
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAdmin();
+    }
+
+    // Koleksi Daftar Admin / Operator LPNU
+    match /admins/{adminId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+  }
+}
