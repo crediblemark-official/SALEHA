@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue';
 import { gasService } from '../services/gasService';
-import { loginWithGoogle, logoutFirebase, subscribeToAuth } from '../services/firebase';
+import { loginWithGoogle, logoutFirebase, subscribeToAuth, getAuthErrorMessage } from '../services/firebase';
 
 const STORAGE_KEY = 'saleha_permohonan_data_v1';
 const USER_KEY = 'saleha_current_user_v1';
@@ -136,44 +136,52 @@ const currentAdminUser = ref({
 // Firebase Auth Reactive State
 const firebaseUser = ref(null);
 const isAuthLoading = ref(true);
+const authErrorMessage = ref('');
 
 // Subscribe to Firebase Auth
-subscribeToAuth((user) => {
-  firebaseUser.value = user;
-  isAuthLoading.value = false;
-  if (user) {
-    if (!currentUmkmUser.value) {
-      currentUmkmUser.value = {
-        id: user.uid,
-        email: user.email || '',
-        namaPemilik: user.displayName || '',
-        photoURL: user.photoURL || '',
-        noWa: '',
-        nik: ''
-      };
-    } else {
-      currentUmkmUser.value.id = user.uid;
-      currentUmkmUser.value.email = user.email || currentUmkmUser.value.email || '';
-      currentUmkmUser.value.namaPemilik = user.displayName || currentUmkmUser.value.namaPemilik || '';
-      currentUmkmUser.value.photoURL = user.photoURL || '';
-    }
+subscribeToAuth(
+  (user) => {
+    firebaseUser.value = user;
+    isAuthLoading.value = false;
+    if (user) {
+      authErrorMessage.value = '';
+      if (!currentUmkmUser.value) {
+        currentUmkmUser.value = {
+          id: user.uid,
+          email: user.email || '',
+          namaPemilik: user.displayName || '',
+          photoURL: user.photoURL || '',
+          noWa: '',
+          nik: ''
+        };
+      } else {
+        currentUmkmUser.value.id = user.uid;
+        currentUmkmUser.value.email = user.email || currentUmkmUser.value.email || '';
+        currentUmkmUser.value.namaPemilik = user.displayName || currentUmkmUser.value.namaPemilik || '';
+        currentUmkmUser.value.photoURL = user.photoURL || '';
+      }
 
-    // Deteksi akun Admin LPNU
-    const isAdminEmail = user.email && (
-      user.email.endsWith('@lpnu-sumenep.or.id') ||
-      user.email === 'rasy.ibnzawawi@gmail.com'
-    );
-    if (isAdminEmail) {
-      currentAdminUser.value = {
-        id: user.uid,
-        email: user.email,
-        nama: user.displayName || 'Admin LPNU PCNU',
-        photoURL: user.photoURL || '',
-        isLoggedIn: true
-      };
+      // Deteksi akun Admin LPNU
+      const isAdminEmail = user.email && (
+        user.email.endsWith('@lpnu-sumenep.or.id') ||
+        user.email === 'rasy.ibnzawawi@gmail.com'
+      );
+      if (isAdminEmail) {
+        currentAdminUser.value = {
+          id: user.uid,
+          email: user.email,
+          nama: user.displayName || 'Admin LPNU PCNU',
+          photoURL: user.photoURL || '',
+          isLoggedIn: true
+        };
+      }
     }
+  },
+  (error) => {
+    isAuthLoading.value = false;
+    authErrorMessage.value = getAuthErrorMessage(error);
   }
-});
+);
 
 function loadPermohonan() {
   try {
@@ -382,6 +390,8 @@ export function useSalehaStore() {
     currentAdminUser,
     firebaseUser,
     isAuthLoading,
+    authErrorMessage,
+    clearAuthError: () => { authErrorMessage.value = ''; },
     myPermohonan,
     myBrankasDocuments,
     adminStats,

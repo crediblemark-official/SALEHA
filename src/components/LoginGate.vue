@@ -94,18 +94,24 @@
       </button>
 
       <!-- Error Notice Card (if login fails) -->
-      <div v-if="errorMessage" class="p-3 bg-red-950/60 border border-red-500/30 rounded-xl text-left text-xs animate-in fade-in">
+      <div v-if="activeError" class="p-3 bg-red-950/70 border border-red-500/40 rounded-xl text-left text-xs animate-in fade-in">
         <div class="flex items-start justify-between gap-2">
           <div class="flex items-center gap-1.5 text-red-400 font-bold text-[11px]">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
-            <span>Konfigurasi Google Auth Diperlukan</span>
+            <span>Kendala Autentikasi Google</span>
           </div>
-          <button @click="errorMessage = ''" class="text-slate-400 hover:text-white text-xs">✕</button>
+          <button @click="dismissError" class="text-slate-400 hover:text-white text-xs p-0.5">✕</button>
         </div>
-        <p class="text-[10px] text-slate-300 mt-1 leading-relaxed">
-          Google Cloud menolak permintaan autentikasi (401). Pastikan <b>Support Email</b> telah dipilih di Firebase Console > Authentication > Sign-in method > Google.
+        <p class="text-[11px] text-slate-200 mt-1 leading-relaxed">
+          {{ activeError }}
+        </p>
+        <p v-if="activeError.includes('Authorized domains') || activeError.includes('Domain')" class="text-[10px] text-amber-300 mt-2 bg-amber-950/40 p-2 rounded-lg border border-amber-500/30">
+          💡 <b>Solusi:</b> Buka <b>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</b>, lalu tambahkan domain tempat aplikasi ini dibuka (misal: <code>localhost</code> atau domain web Anda).
+        </p>
+        <p v-else-if="activeError.includes('401') || activeError.includes('OAuth') || activeError.includes('Konfigurasi')" class="text-[10px] text-amber-300 mt-2 bg-amber-950/40 p-2 rounded-lg border border-amber-500/30">
+          💡 <b>Solusi:</b> Pastikan <b>Support Email</b> telah dipilih di <b>Firebase Console &gt; Authentication &gt; Sign-in method &gt; Google</b> dan status OAuth Consent Screen di Google Cloud Console sudah aktif.
         </p>
       </div>
 
@@ -121,8 +127,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSalehaStore } from '../composables/useSalehaStore';
+import { getAuthErrorMessage } from '../services/firebase';
 
 const emit = defineEmits(['loginSuccess']);
 
@@ -130,13 +137,25 @@ const store = useSalehaStore();
 const isLoading = ref(false);
 const errorMessage = ref('');
 
+const activeError = computed(() => errorMessage.value || store.authErrorMessage.value);
+
+function dismissError() {
+  errorMessage.value = '';
+  store.clearAuthError();
+}
+
 async function handleLoginGoogle() {
   isLoading.value = true;
   errorMessage.value = '';
+  store.clearAuthError();
   try {
     const res = await store.loginGoogle();
+    if (res.userCancelled) {
+      isLoading.value = false;
+      return;
+    }
     if (res.redirecting) {
-      // Sedang dialihkan ke halaman akun Google, pertahankan loading spinner
+      // Sedang dialihkan ke halaman akun Google, spinner tetap aktif
       return;
     }
     if (res.success && res.user) {
@@ -144,12 +163,12 @@ async function handleLoginGoogle() {
       isLoading.value = false;
     } else if (res.error) {
       console.error('Login error detail:', res.error);
-      errorMessage.value = res.error.message || 'Gagal login dengan akun Google';
+      errorMessage.value = getAuthErrorMessage(res.error);
       isLoading.value = false;
     }
   } catch (e) {
-    console.error(e);
-    errorMessage.value = e.message || 'Terjadi kesalahan sistem login';
+    console.error('Login catch error:', e);
+    errorMessage.value = getAuthErrorMessage(e);
     isLoading.value = false;
   }
 }
