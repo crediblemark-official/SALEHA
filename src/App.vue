@@ -9,8 +9,17 @@
       :class="!store.firebaseUser.value ? 'bg-slate-900' : 'bg-slate-50 shadow-2xl sm:border-x sm:border-slate-200/80'"
     >
       
+      <!-- SPLASH / INITIAL AUTH CHECK (Mencegah kedipan LoginGate jika user sudah login) -->
+      <div v-if="store.isAuthLoading.value" class="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 space-y-4">
+        <img src="/logo.png" alt="SALEHA" class="w-16 h-16 rounded-2xl shadow-xl animate-pulse" />
+        <div class="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+          <span class="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></span>
+          <span>Menyiapkan sesi SALEHA...</span>
+        </div>
+      </div>
+
       <!-- PINTU MASUK WAJIB: LOGIN DENGAN GOOGLE -->
-      <LoginGate v-if="!store.firebaseUser.value" />
+      <LoginGate v-else-if="!store.firebaseUser.value" />
 
       <!-- MAIN APP INTERFACE (Hanya bisa dibuka setelah login) -->
       <template v-else>

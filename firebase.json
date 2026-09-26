@@ -15,12 +15,20 @@
         "destination": "/privacy.html"
       },
       {
+        "source": "/home",
+        "destination": "/home.html"
+      },
+      {
         "source": "/app",
-        "destination": "/app.html"
+        "destination": "/index.html"
       },
       {
         "source": "/app/**",
-        "destination": "/app.html"
+        "destination": "/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
       }
     ]
   }
