@@ -17,10 +17,15 @@ const CONFIG = {
   FOLDER_PDF_ID: "GANTI_DENGAN_ID_FOLDER_PDF_HASIL_DRIVE",
   SPREADSHEET_ID: "GANTI_DENGAN_ID_SPREADSHEET_MASTER_SALEHA",
   SHEET_NAME_MASTER: "MASTER_DATA",
-  SHEET_NAME_REKAP: "REKAP_KECAMATAN"
+  SHEET_NAME_REKAP: "REKAP_KECAMATAN",
+  SHEET_NAME_ADMINS: "ADMIN_USERS"
 };
 
 function doGet(e) {
+  const action = e && e.parameter ? e.parameter.action : null;
+  if (action === "getAdmins") {
+    return handleGetAdmins();
+  }
   return ContentService.createTextOutput(JSON.stringify({
     status: "online",
     service: "SALEHA LPNU Sumenep API Gateway",
@@ -42,6 +47,8 @@ function doPost(e) {
       return handleUploadFile(payload);
     } else if (action === "syncSheet") {
       return handleSyncSheet(payload);
+    } else if (action === "getAdmins") {
+      return handleGetAdmins();
     } else {
       return responseJson({ success: false, error: "Unknown action: " + action });
     }
@@ -192,6 +199,60 @@ function setupSheetHeaders(ss) {
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#057a55").setFontColor("#ffffff");
+}
+
+function handleGetAdmins() {
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  } catch (e) {
+    const files = DriveApp.getFilesByName("DATABASE_MASTER_SALEHA_PCNU");
+    if (files.hasNext()) {
+      ss = SpreadsheetApp.open(files.next());
+    } else {
+      ss = SpreadsheetApp.create("DATABASE_MASTER_SALEHA_PCNU");
+    }
+  }
+
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_ADMINS);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.SHEET_NAME_ADMINS);
+    setupAdminSheetHeaders(sheet);
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const admins = [];
+
+  // Baris 1 adalah Header: [Email, Nama_Operator, Role, Status_Aktif]
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const email = String(row[0] || "").trim().toLowerCase();
+    const nama = String(row[1] || "").trim();
+    const role = String(row[2] || "admin").trim();
+    const status = String(row[3] || "AKTIF").trim().toUpperCase();
+
+    if (email && (status === "AKTIF" || status === "ACTIVE" || status === "TRUE" || status === "1")) {
+      admins.push({ email: email, nama: nama, role: role });
+    }
+  }
+
+  return responseJson({
+    success: true,
+    admins: admins
+  });
+}
+
+function setupAdminSheetHeaders(sheet) {
+  const headers = ["Email", "Nama_Operator", "Role", "Status_Aktif"];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#057a55").setFontColor("#ffffff");
+
+  // Contoh data awal (dapat diubah/ditambah langsung di Google Sheets kapan saja)
+  const defaultAdmins = [
+    ["rasy.ibnzawawi@gmail.com", "Rasyiqi", "Super Admin", "AKTIF"],
+    ["admin@lpnu-sumenep.or.id", "Tim Operator LPNU", "Admin", "AKTIF"]
+  ];
+  sheet.getRange(2, 1, defaultAdmins.length, headers.length).setValues(defaultAdmins);
 }
 
 function responseJson(obj) {

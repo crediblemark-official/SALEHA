@@ -122,12 +122,26 @@
           </div>
         </div>
 
-        <!-- Reset Demo Data -->
-        <div class="pt-1">
+        <!-- Reset Demo Data & Sync Firestore -->
+        <div class="pt-1 space-y-2">
+          <!-- Button Sync to Cloud Firestore -->
+          <button
+            @click="handleSyncAllToFirestore"
+            :disabled="syncingFirestore"
+            type="button"
+            class="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 active:scale-98 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+          >
+            <span v-if="syncingFirestore" class="w-3.5 h-3.5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin"></span>
+            <span v-else>☁️ Unggah &amp; Sinkronkan Data ke Firestore</span>
+          </button>
+          <p v-if="syncSuccessMessage" class="text-[10px] text-emerald-700 font-semibold text-center animate-in fade-in">
+            {{ syncSuccessMessage }}
+          </p>
+
           <button
             @click="handleResetData"
             type="button"
-            class="text-[10.5px] text-slate-400 hover:text-rose-600 font-medium flex items-center gap-1 transition-colors"
+            class="text-[10.5px] text-slate-400 hover:text-rose-600 font-medium flex items-center gap-1 transition-colors mx-auto"
           >
             <span>🔄</span>
             <span>Kembalikan data contoh demo Sumenep</span>
@@ -177,6 +191,7 @@
 <script setup>
 import { ref } from 'vue';
 import { gasService } from '../services/gasService';
+import { firestoreService } from '../services/firestoreService';
 import { useSalehaStore } from '../composables/useSalehaStore';
 import VersionBadge from './VersionBadge.vue';
 import ModalAdminLogin from './ModalAdminLogin.vue';
@@ -191,6 +206,8 @@ const store = useSalehaStore();
 const gasUrlInput = ref(gasService.getGasUrl());
 const loadingAuth = ref(false);
 const showAdminModal = ref(false);
+const syncingFirestore = ref(false);
+const syncSuccessMessage = ref('');
 
 async function handleLoginGoogle() {
   loadingAuth.value = true;
@@ -222,6 +239,27 @@ function handleResetData() {
     store.resetToDefaultData();
     alert('Data contoh telah dikembalikan.');
     emit('close');
+  }
+}
+
+async function handleSyncAllToFirestore() {
+  if (!store.firebaseUser.value) {
+    alert('Harap login terlebih dahulu untuk sinkronisasi ke Cloud Firestore.');
+    return;
+  }
+  syncingFirestore.value = true;
+  syncSuccessMessage.value = '';
+  try {
+    let count = 0;
+    for (const item of store.permohonanList.value) {
+      await firestoreService.savePermohonan(item);
+      count++;
+    }
+    syncSuccessMessage.value = `✓ Berhasil mengunggah ${count} data tiket ke Cloud Firestore!`;
+  } catch (err) {
+    alert('Gagal sinkronkan ke Firestore: ' + (err.message || err));
+  } finally {
+    syncingFirestore.value = false;
   }
 }
 </script>

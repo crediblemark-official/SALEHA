@@ -1,6 +1,8 @@
 import { ref, computed, watch } from 'vue';
 import { gasService } from '../services/gasService';
-import { loginWithGoogle, loginWithEmailPassword, logoutFirebase, subscribeToAuth, getAuthErrorMessage } from '../services/firebase';
+import { firestoreService } from '../services/firestoreService';
+import { loginWithGoogle, loginWithEmailPassword, logoutFirebase, subscribeToAuth, getAuthErrorMessage, db } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { APP_VERSION } from '../config/appInfo';
 
 const STORAGE_KEY = 'saleha_permohonan_data_v1';
@@ -116,16 +118,89 @@ const INITIAL_PERMOHONAN = [
 const permohonanList = ref(loadPermohonan());
 const activeRole = ref(localStorage.getItem(ROLE_KEY) || 'umkm'); // 'umkm' | 'admin'
 
-// Verifikasi Otoritas Admin LPNU Resmi
+// Cache dinamis daftar email admin dari Google Sheets (Tab ADMIN_USERS) & Firestore
+const adminListFromSheet = ref(gasService.getCachedAdmins());
+
+// Ambil data terbaru dari Google Sheets saat aplikasi aktif
+gasService.fetchAdminsFromSheet().then(list => {
+  if (Array.isArray(list) && list.length > 0) {
+    adminListFromSheet.value = list;
+  }
+}).catch(err => console.warn('Sync admin sheet status:', err));
+
+// Verifikasi Otoritas Admin LPNU Dinamis (Sheet Kontrol & Firestore)
+export async function verifyAdminFromSheetOrDb(email, uid) {
+  if (!email) return { isAdmin: false };
+  const cleanEmail = email.toLowerCase().trim();
+
+  // 1. Cek langsung dari kontrol Google Sheets (Tab ADMIN_USERS)
+  try {
+    const sheetResult = await gasService.checkIsEmailAdminInSheet(cleanEmail);
+    if (sheetResult.isAdmin) {
+      return {
+        isAdmin: true,
+        operatorName: sheetResult.nama || 'Operator LPNU',
+        role: sheetResult.role || 'admin',
+        source: 'Google Sheets'
+      };
+    }
+  } catch (e) {
+    console.warn('Gagal cek admin dari sheet:', e);
+  }
+
+  // 2. Cek Firestore koleksi 'admins'
+  try {
+    const adminDoc = await getDoc(doc(db, 'admins', cleanEmail));
+    if (adminDoc.exists()) {
+      const data = adminDoc.data();
+      const status = (data.status || 'AKTIF').toUpperCase();
+      if (status === 'AKTIF' || status === 'ACTIVE') {
+        return {
+          isAdmin: true,
+          operatorName: data.nama || 'Operator LPNU',
+          role: data.role || 'admin',
+          source: 'Firestore'
+        };
+      }
+    }
+  } catch (e) {}
+
+  if (uid) {
+    try {
+      const adminUidDoc = await getDoc(doc(db, 'admins', uid));
+      if (adminUidDoc.exists()) {
+        const data = adminUidDoc.data();
+        return {
+          isAdmin: true,
+          operatorName: data.nama || 'Operator LPNU',
+          role: data.role || 'admin',
+          source: 'Firestore UID'
+        };
+      }
+    } catch (e) {}
+  }
+
+  // 3. Fallback domain resmi LPNU
+  if (cleanEmail.endsWith('@lpnu-sumenep.or.id')) {
+    return {
+      isAdmin: true,
+      operatorName: 'Pengurus LPNU Sumenep',
+      role: 'admin',
+      source: 'Domain LPNU'
+    };
+  }
+
+  return { isAdmin: false };
+}
+
+// Helper synchronous untuk computed
 export function isAuthorizedAdmin(email) {
   if (!email) return false;
-  const e = email.toLowerCase().trim();
-  return (
-    e.endsWith('@lpnu-sumenep.or.id') ||
-    e === 'rasy.ibnzawawi@gmail.com' ||
-    e.includes('admin') ||
-    e.includes('lpnu')
-  );
+  const cleanEmail = email.toLowerCase().trim();
+  const list = adminListFromSheet.value || [];
+  const found = list.some(a => (a.email || '').toLowerCase().trim() === cleanEmail);
+  if (found) return true;
+  return cleanEmail.endsWith('@lpnu-sumenep.or.id');
 }
 
 // Current UMKM Session
@@ -150,6 +225,7 @@ const currentAdminUser = ref({
 const firebaseUser = ref(null);
 const isAuthLoading = ref(true);
 const authErrorMessage = ref('');
+let unsubscribeFirestore = null;
 
 // Subscribe to Firebase Auth
 subscribeToAuth(
@@ -191,7 +267,32 @@ subscribeToAuth(
           localStorage.setItem(ROLE_KEY, 'umkm');
         }
       }
+
+      // 1. Simpan/update profil user ke Firestore (/users/{uid})
+      firestoreService.saveUserProfile(user, {
+        nama_pemilik: currentUmkmUser.value.namaPemilik,
+        no_wa: currentUmkmUser.value.noWa
+      });
+
+      // 2. Hubungkan sinkronisasi real-time Firestore (/permohonan)
+      if (unsubscribeFirestore) unsubscribeFirestore();
+      unsubscribeFirestore = firestoreService.subscribePermohonan({
+        userId: user.uid,
+        isAdmin,
+        onData: (list) => {
+          if (list && list.length > 0) {
+            permohonanList.value = list;
+          }
+        }
+      });
+
+      // 3. Jika Firestore masih kosong (baru dipasang), sinkronkan data awal
+      firestoreService.syncInitialDataIfEmpty(INITIAL_PERMOHONAN, user);
     } else {
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+        unsubscribeFirestore = null;
+      }
       activeRole.value = 'umkm';
       localStorage.setItem(ROLE_KEY, 'umkm');
     }
@@ -287,6 +388,9 @@ export function useSalehaStore() {
     // Tambahkan ke store reaktif
     permohonanList.value.unshift(newTicket);
 
+    // Simpan dokumen permohonan ke Cloud Firestore
+    firestoreService.savePermohonan(newTicket).catch(console.error);
+
     // Sync ke Google Sheets via GAS secara background
     gasService.syncToGoogleSheet(newTicket).catch(console.error);
 
@@ -304,6 +408,14 @@ export function useSalehaStore() {
       if (pdfUrl !== undefined) item.pdf_hasil_url = pdfUrl;
       item.updated_at = new Date().toISOString();
 
+      // Simpan perubahan ke Cloud Firestore
+      firestoreService.updatePermohonan(ticketId, {
+        status: item.status,
+        catatan_lpnu: item.catatan_lpnu,
+        pdf_hasil_url: item.pdf_hasil_url,
+        operator_assigned: item.operator_assigned
+      }).catch(console.error);
+
       // Trigger sync GAS ke Google Sheets
       gasService.syncToGoogleSheet(item).catch(console.error);
       return item;
@@ -320,6 +432,13 @@ export function useSalehaStore() {
         item.status = 'DIPROSES';
       }
       item.updated_at = new Date().toISOString();
+
+      // Simpan klaim ke Cloud Firestore
+      firestoreService.updatePermohonan(ticketId, {
+        status: item.status,
+        operator_assigned: item.operator_assigned
+      }).catch(console.error);
+
       gasService.syncToGoogleSheet(item).catch(console.error);
     }
   }
@@ -333,6 +452,15 @@ export function useSalehaStore() {
       item.status = 'DIPROSES';
       item.catatan_lpnu = catatan ? `[Revisi Pemohon: ${catatan}] Menunggu tinjauan ulang admin.` : 'Berkas revisi telah diunggah. Menunggu tinjauan ulang admin.';
       item.updated_at = new Date().toISOString();
+
+      // Simpan berkas revisi ke Cloud Firestore
+      firestoreService.updatePermohonan(ticketId, {
+        status: item.status,
+        foto_ktp_url: item.foto_ktp_url,
+        foto_produk_url: item.foto_produk_url,
+        catatan_lpnu: item.catatan_lpnu
+      }).catch(console.error);
+
       gasService.syncToGoogleSheet(item).catch(console.error);
     }
   }
@@ -416,41 +544,45 @@ export function useSalehaStore() {
     return res;
   }
 
-  // Login khusus Admin melalui Google (Jalur rahasia nomor versi)
+  // Login khusus Admin melalui Google (Jalur rahasia nomor versi, terverifikasi via Google Sheet)
   async function loginAdminGoogle() {
     isAuthLoading.value = true;
     authErrorMessage.value = '';
     const res = await loginWithGoogle();
-    isAuthLoading.value = false;
 
     if (res.success && res.user) {
-      const isAllowed = isAuthorizedAdmin(res.user.email);
-      if (!isAllowed) {
+      // Verifikasi langsung ke data Google Sheets & Firestore
+      const check = await verifyAdminFromSheetOrDb(res.user.email, res.user.uid);
+
+      if (!check.isAdmin) {
         // BUKAN ADMIN: Tolak dan keluarkan segera dari sesi
         await logoutFirebase();
         firebaseUser.value = null;
         activeRole.value = 'umkm';
         localStorage.setItem(ROLE_KEY, 'umkm');
-        authErrorMessage.value = `Akses Ditolak: Akun Google (${res.user.email}) bukan akun Administrator / Operator resmi LPNU PCNU Sumenep.`;
+        isAuthLoading.value = false;
+        authErrorMessage.value = `Akses Ditolak: Akun Google (${res.user.email}) belum terdaftar pada Tab ADMIN_USERS di Google Sheet kontrol.`;
         return {
           success: false,
           error: new Error(authErrorMessage.value)
         };
       }
 
-      // AKUN ADMIN TERVERIFIKASI
+      // AKUN ADMIN TERVERIFIKASI DARI SHEET
       setRole('admin');
       currentAdminUser.value = {
         id: res.user.uid,
         email: res.user.email,
-        nama: res.user.displayName || 'Admin LPNU PCNU',
+        nama: check.operatorName || res.user.displayName || 'Admin LPNU PCNU',
         photoURL: res.user.photoURL || '',
         isLoggedIn: true
       };
+      isAuthLoading.value = false;
       return { success: true, user: res.user };
     } else if (!res.userCancelled) {
       authErrorMessage.value = getAuthErrorMessage(res.error);
     }
+    isAuthLoading.value = false;
     return res;
   }
 

@@ -143,5 +143,71 @@ export const gasService = {
       console.error('Gagal sync ke Google Sheets via GAS:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  /**
+   * Ambil daftar admin terverifikasi dari Google Sheets (Tab ADMIN_USERS)
+   */
+  async fetchAdminsFromSheet() {
+    const gasUrl = this.getGasUrl();
+    if (!gasUrl) {
+      return this.getCachedAdmins();
+    }
+
+    try {
+      const url = gasUrl.includes('?') ? `${gasUrl}&action=getAdmins` : `${gasUrl}?action=getAdmins`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && Array.isArray(result.admins)) {
+          this.setCachedAdmins(result.admins);
+          return result.admins;
+        }
+      }
+    } catch (error) {
+      console.warn('Gagal fetch admin dari GAS Google Sheets, menggunakan cache lokal:', error);
+    }
+
+    return this.getCachedAdmins();
+  },
+
+  getCachedAdmins() {
+    try {
+      const cached = localStorage.getItem('saleha_admin_list_cache');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    // Default kontrol lokal awal
+    return [
+      { email: 'rasy.ibnzawawi@gmail.com', nama: 'Rasyiqi', role: 'admin' },
+      { email: 'admin@lpnu-sumenep.or.id', nama: 'Tim Operator LPNU', role: 'admin' }
+    ];
+  },
+
+  setCachedAdmins(admins) {
+    try {
+      localStorage.setItem('saleha_admin_list_cache', JSON.stringify(admins));
+    } catch (e) {}
+  },
+
+  /**
+   * Cek apakah email terdaftar di Google Sheet sebagai Admin aktif
+   */
+  async checkIsEmailAdminInSheet(email) {
+    if (!email) return { isAdmin: false };
+    const cleanEmail = email.toLowerCase().trim();
+    const admins = await this.fetchAdminsFromSheet();
+    const match = admins.find(a => (a.email || '').toLowerCase().trim() === cleanEmail);
+    if (match) {
+      return {
+        isAdmin: true,
+        nama: match.nama || 'Operator LPNU',
+        role: match.role || 'admin'
+      };
+    }
+    return { isAdmin: false };
   }
 };

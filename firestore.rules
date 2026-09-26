@@ -7,7 +7,9 @@ service cloud.firestore {
       return request.auth != null && (
         request.auth.token.role == 'admin' ||
         request.auth.token.email.matches('.*@lpnu-sumenep\\.or\\.id$') ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        request.auth.token.email == 'rasy.ibnzawawi@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)))
       );
     }
 
@@ -26,8 +28,11 @@ service cloud.firestore {
       // Admin LPNU bisa membaca semua permohonan; UMKM hanya bisa membaca permohonannya sendiri
       allow read: if isAdmin() || (request.auth != null && resource.data.user_id == request.auth.uid);
       
-      // Pembuatan permohonan baru oleh UMKM yang terotentikasi
-      allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+      // Pembuatan permohonan baru oleh UMKM yang terotentikasi atau Admin
+      allow create: if request.auth != null && (
+        request.resource.data.user_id == request.auth.uid || 
+        isAdmin()
+      );
       
       // Update data:
       // - UMKM hanya boleh update foto/catatan perbaikan jika status BUTUH_REVISI
