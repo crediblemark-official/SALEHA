@@ -10,11 +10,12 @@
  */
 
 // Konfigurasi ID Folder Google Drive & ID Spreadsheet LPNU
-// (Ganti nilai di bawah ini dengan ID folder dan sheet milik akun Google Drive PCNU Sumenep)
 const CONFIG = {
-  FOLDER_KTP_ID: "GANTI_DENGAN_ID_FOLDER_KTP_DRIVE",
-  FOLDER_PRODUK_ID: "GANTI_DENGAN_ID_FOLDER_PRODUK_DRIVE",
-  FOLDER_PDF_ID: "GANTI_DENGAN_ID_FOLDER_PDF_HASIL_DRIVE",
+  // Folder Utama Penyimpanan Berkas Media SALEHA (Google Drive):
+  FOLDER_MEDIA_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
+  FOLDER_KTP_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
+  FOLDER_PRODUK_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
+  FOLDER_PDF_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
   SPREADSHEET_ID: "GANTI_DENGAN_ID_SPREADSHEET_MASTER_SALEHA",
   SHEET_NAME_MASTER: "MASTER_DATA",
   SHEET_NAME_REKAP: "REKAP_KECAMATAN",
@@ -58,7 +59,7 @@ function doPost(e) {
 }
 
 /**
- * Handle Upload Berkas (Base64) ke Google Drive
+ * Handle Upload Berkas (Base64) ke Google Drive Folder SALEHA
  */
 function handleUploadFile(payload) {
   const { fileName, mimeType, base64Data, folderType } = payload;
@@ -67,26 +68,34 @@ function handleUploadFile(payload) {
     return responseJson({ success: false, error: "base64Data is required" });
   }
 
-  // Pilih folder tujuan
-  let folderId = CONFIG.FOLDER_KTP_ID;
-  if (folderType === "produk") folderId = CONFIG.FOLDER_PRODUK_ID;
-  if (folderType === "pdf") folderId = CONFIG.FOLDER_PDF_ID;
-
-  let folder;
+  // Ambil folder media utama SALEHA
+  let parentFolder;
   try {
-    folder = DriveApp.getFolderById(folderId);
+    parentFolder = DriveApp.getFolderById(CONFIG.FOLDER_MEDIA_ID);
   } catch (e) {
-    // Fallback jika ID belum dikonfigurasi: buat/ambil folder SALEHA_UPLOADS di root drive
-    const folders = DriveApp.getFoldersByName("SALEHA_UPLOADS_" + folderType.toUpperCase());
-    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("SALEHA_UPLOADS_" + folderType.toUpperCase());
+    const folders = DriveApp.getFoldersByName("SALEHA_MEDIA");
+    parentFolder = folders.hasNext() ? folders.next() : DriveApp.createFolder("SALEHA_MEDIA");
   }
 
-  // Decode Base64
+  // Pisahkan otomatis ke subfolder rapi (FOTO_KTP, FOTO_PRODUK, PDF_HASIL_LEGALITAS)
+  let subfolderName = "FOTO_KTP";
+  if (folderType === "produk") subfolderName = "FOTO_PRODUK";
+  if (folderType === "pdf") subfolderName = "PDF_HASIL_LEGALITAS";
+
+  let targetFolder;
+  const subfolders = parentFolder.getFoldersByName(subfolderName);
+  if (subfolders.hasNext()) {
+    targetFolder = subfolders.next();
+  } else {
+    targetFolder = parentFolder.createFolder(subfolderName);
+  }
+
+  // Decode Base64 & simpan berkas ke subfolder
   const decodedData = Utilities.base64Decode(base64Data);
   const blob = Utilities.newBlob(decodedData, mimeType || "image/jpeg", fileName || "file_" + Date.now());
-  const file = folder.createFile(blob);
+  const file = targetFolder.createFile(blob);
 
-  // Set izin publik terbatas agar dapat dilihat oleh admin & pemohon
+  // Set izin akses link publik (view) agar bisa dipratinjau pemohon & operator
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const fileUrl = file.getUrl();

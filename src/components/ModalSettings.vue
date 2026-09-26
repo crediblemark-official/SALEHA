@@ -120,6 +120,17 @@
             <span class="text-slate-500">GAS Google Drive:</span>
             <span class="font-bold text-emerald-700">✓ Terkoneksi</span>
           </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500">Folder Media Drive:</span>
+            <a
+              :href="GDRIVE_MEDIA_FOLDER_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-bold text-emerald-700 hover:underline inline-flex items-center gap-0.5"
+            >
+              <span>Buka Drive ↗</span>
+            </a>
+          </div>
         </div>
 
         <!-- Reset Demo Data & Sync Firestore -->
@@ -193,6 +204,7 @@ import { ref } from 'vue';
 import { gasService } from '../services/gasService';
 import { firestoreService } from '../services/firestoreService';
 import { useSalehaStore } from '../composables/useSalehaStore';
+import { GDRIVE_MEDIA_FOLDER_URL } from '../config/appInfo';
 import VersionBadge from './VersionBadge.vue';
 import ModalAdminLogin from './ModalAdminLogin.vue';
 
