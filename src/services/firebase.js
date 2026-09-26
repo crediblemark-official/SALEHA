@@ -1,11 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { 
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithRedirect,
   getRedirectResult,
+  signInWithCredential,
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
@@ -57,9 +60,32 @@ export function getAuthErrorMessage(error) {
 }
 
 /**
- * Login menggunakan Google Popup dengan fallback ke Redirect hanya jika diblokir
+ * Login Google: Otomatis Native Google Play Services di Android, Popup/Redirect di Web
  */
 export async function loginWithGoogle() {
+  // 1. DI ANDROID NATIVE (CAPACITOR APK)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      console.log('Menjalankan Native Google Play Services Sign-In di Android...');
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = result.credential?.idToken;
+      if (!idToken) {
+        throw new Error('ID Token tidak ditemukan dari Google Play Services');
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      return { success: true, user: userCredential.user };
+    } catch (error) {
+      console.error('Native Android Google Sign-In Error:', error);
+      // Jika pengguna membatalkan dialog akun Android
+      if (error?.message?.includes('cancel') || error?.code === '12501' || error?.message?.includes('12501')) {
+        return { success: false, error, userCancelled: true };
+      }
+      return { success: false, error };
+    }
+  }
+
+  // 2. DI WEB BROWSER
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return { success: true, user: result.user };
@@ -88,10 +114,17 @@ export async function loginWithGoogle() {
 }
 
 /**
- * Logout
+ * Logout dari Firebase & Google Native
  */
 export async function logoutFirebase() {
   try {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await FirebaseAuthentication.signOut();
+      } catch (nativeErr) {
+        console.warn('Native sign out warning:', nativeErr);
+      }
+    }
     await signOut(auth);
     return { success: true };
   } catch (error) {

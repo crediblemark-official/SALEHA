@@ -1,5 +1,11 @@
 {
   "appId": "org.lpnu.sumenep.saleha",
   "appName": "SALEHA",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  }
 }
