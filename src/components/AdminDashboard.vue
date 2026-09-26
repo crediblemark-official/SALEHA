@@ -4,10 +4,9 @@
     <!-- Top Compact Header (Directly connected, no gap) -->
     <div class="bg-emerald-950 text-white px-3.5 py-2.5 flex items-center justify-between border-b border-emerald-900 gap-2">
       <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-1.5 leading-none">
-          <span class="text-xs sm:text-sm font-black tracking-tight text-white truncate">Back-Office LPNU</span>
-          <span class="text-[8.5px] bg-amber-400 text-emerald-950 font-black px-1 py-0.5 rounded shrink-0">ADMIN</span>
-        </div>
+        <h2 class="text-xs sm:text-sm font-black tracking-tight text-white truncate leading-none">
+          Back-Office LPNU
+        </h2>
         <p class="text-[10px] text-emerald-300 mt-1 leading-none truncate">
           {{ store.currentAdminUser.value.nama }}
         </p>
