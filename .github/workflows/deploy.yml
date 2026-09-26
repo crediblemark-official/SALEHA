@@ -38,11 +38,10 @@ jobs:
       - name: 🏗️ Build aplikasi Vue
         run: npm run build
 
-      - name: 📄 Copy halaman publik ke dist
+      - name: 📄 Pastikan file verifikasi & publik ada di dist
         run: |
-          cp public/home.html dist/index.html
-          cp public/privacy.html dist/privacy.html
-          cp public/home.html dist/home.html
+          cp public/home.html dist/home.html || true
+          cp public/privacy.html dist/privacy.html || true
           cp public/google5819b7d75419cbb0.html dist/google5819b7d75419cbb0.html || true
 
       - name: 🔥 Deploy ke Firebase Hosting
