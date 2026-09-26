@@ -137,7 +137,7 @@
         <!-- Copyright & Credit -->
         <div class="text-center pt-2 text-[10px] text-slate-400 space-y-0.5">
           <p>© 2026 SALEHA · LPNU PCNU Sumenep</p>
-          <p>Dibuat dengan ❤️ oleh <span class="font-bold text-emerald-800">Rasyiqi</span></p>
+          <p>Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-800 hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-800 hover:underline">crediblemark.com</a></p>
         </div>
 
       </div>

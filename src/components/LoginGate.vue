@@ -122,7 +122,7 @@
           Pengurus Cabang Nahdlatul Ulama (PCNU) Kabupaten Sumenep
         </p>
         <p class="text-[9.5px] text-slate-400 font-medium">
-          © 2026 SALEHA · Dibuat dengan ❤️ oleh <span class="text-emerald-400 font-semibold">Rasyiqi</span>
+          © 2026 SALEHA · Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="text-emerald-400 font-semibold hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-400 hover:underline">crediblemark.com</a>
         </p>
       </div>
 

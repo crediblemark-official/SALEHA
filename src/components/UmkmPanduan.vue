@@ -76,7 +76,7 @@
     <!-- Copyright & Credits -->
     <div class="text-center pt-3 pb-6 space-y-0.5">
       <p class="text-[9.5px] text-slate-400 font-medium">© 2026 SALEHA · LPNU PCNU Kabupaten Sumenep</p>
-      <p class="text-[9.5px] text-slate-400">Dibuat dengan ❤️ oleh <span class="font-bold text-emerald-800">Rasyiqi</span></p>
+      <p class="text-[9.5px] text-slate-400">Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-800 hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-800 hover:underline">crediblemark.com</a></p>
     </div>
 
   </div>
