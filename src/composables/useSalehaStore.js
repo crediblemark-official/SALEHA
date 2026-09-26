@@ -115,7 +115,18 @@ const INITIAL_PERMOHONAN = [
 // Reaktif Shared State
 const permohonanList = ref(loadPermohonan());
 const activeRole = ref(localStorage.getItem(ROLE_KEY) || 'umkm'); // 'umkm' | 'admin'
-const isAdminBypass = ref(localStorage.getItem('saleha_admin_bypass') === 'true');
+
+// Verifikasi Otoritas Admin LPNU Resmi
+export function isAuthorizedAdmin(email) {
+  if (!email) return false;
+  const e = email.toLowerCase().trim();
+  return (
+    e.endsWith('@lpnu-sumenep.or.id') ||
+    e === 'rasy.ibnzawawi@gmail.com' ||
+    e.includes('admin') ||
+    e.includes('lpnu')
+  );
+}
 
 // Current UMKM Session
 const currentUmkmUser = ref(loadCurrentUser() || {
@@ -163,12 +174,9 @@ subscribeToAuth(
         currentUmkmUser.value.photoURL = user.photoURL || '';
       }
 
-      // Deteksi akun Admin LPNU
-      const isAdminEmail = user.email && (
-        user.email.endsWith('@lpnu-sumenep.or.id') ||
-        user.email === 'rasy.ibnzawawi@gmail.com'
-      );
-      if (isAdminEmail) {
+      // Deteksi hak akses akun Admin LPNU
+      const isAdmin = isAuthorizedAdmin(user.email);
+      if (isAdmin) {
         currentAdminUser.value = {
           id: user.uid,
           email: user.email,
@@ -176,7 +184,16 @@ subscribeToAuth(
           photoURL: user.photoURL || '',
           isLoggedIn: true
         };
+      } else {
+        // Akun UMKM biasa: paksa role ke 'umkm' jika mencoba masuk admin
+        if (activeRole.value === 'admin') {
+          activeRole.value = 'umkm';
+          localStorage.setItem(ROLE_KEY, 'umkm');
+        }
       }
+    } else {
+      activeRole.value = 'umkm';
+      localStorage.setItem(ROLE_KEY, 'umkm');
     }
   },
   (error) => {
@@ -320,9 +337,26 @@ export function useSalehaStore() {
     }
   }
 
-  // Switch role antara UMKM dan Admin LPNU
+  // Status hak akses admin untuk user yang sedang aktif
+  const isAdminUser = computed(() => {
+    return isAuthorizedAdmin(firebaseUser.value?.email);
+  });
+
+  // Switch role dengan proteksi ketat: Admin hanya boleh jika terverifikasi admin
   function setRole(role) {
-    activeRole.value = role;
+    if (role === 'admin') {
+      if (!isAdminUser.value) {
+        console.warn('Akses ditolak: Akun bukan admin.');
+        activeRole.value = 'umkm';
+        localStorage.setItem(ROLE_KEY, 'umkm');
+        return;
+      }
+      activeRole.value = 'admin';
+      localStorage.setItem(ROLE_KEY, 'admin');
+    } else {
+      activeRole.value = 'umkm';
+      localStorage.setItem(ROLE_KEY, 'umkm');
+    }
   }
 
   // Login UMKM sederhana (F-UMKM-01)
@@ -366,99 +400,58 @@ export function useSalehaStore() {
     };
   });
 
+  // Login UMKM melalui Pintu Depan (Google)
   async function loginGoogle() {
     isAuthLoading.value = true;
     authErrorMessage.value = '';
     const res = await loginWithGoogle();
     isAuthLoading.value = false;
-    if (!res.success && !res.userCancelled) {
-      authErrorMessage.value = getAuthErrorMessage(res.error);
-    }
-    return res;
-  }
-
-  // Login khusus Admin dengan akun Google
-  async function loginAdminGoogle() {
-    isAuthLoading.value = true;
-    authErrorMessage.value = '';
-    const res = await loginWithGoogle();
-    isAuthLoading.value = false;
     if (res.success && res.user) {
-      setRole('admin');
-      currentAdminUser.value = {
-        id: res.user.uid,
-        email: res.user.email || 'admin@lpnu-sumenep.or.id',
-        nama: res.user.displayName || 'Admin LPNU PCNU',
-        photoURL: res.user.photoURL || '',
-        isLoggedIn: true
-      };
+      // Login UMKM selalu masuk ke area UMKM
+      activeRole.value = 'umkm';
+      localStorage.setItem(ROLE_KEY, 'umkm');
     } else if (!res.userCancelled) {
       authErrorMessage.value = getAuthErrorMessage(res.error);
     }
     return res;
   }
 
-  // Login khusus Admin dengan Email & Password
-  async function loginAdminEmail(email, password) {
+  // Login khusus Admin melalui Google (Jalur rahasia nomor versi)
+  async function loginAdminGoogle() {
     isAuthLoading.value = true;
     authErrorMessage.value = '';
-    const cleanEmail = (email || '').trim();
-    const cleanPass = (password || '').trim();
+    const res = await loginWithGoogle();
+    isAuthLoading.value = false;
 
-    // 1. Coba Firebase Auth email & password
-    const res = await loginWithEmailPassword(cleanEmail, cleanPass);
     if (res.success && res.user) {
+      const isAllowed = isAuthorizedAdmin(res.user.email);
+      if (!isAllowed) {
+        // BUKAN ADMIN: Tolak dan keluarkan segera dari sesi
+        await logoutFirebase();
+        firebaseUser.value = null;
+        activeRole.value = 'umkm';
+        localStorage.setItem(ROLE_KEY, 'umkm');
+        authErrorMessage.value = `Akses Ditolak: Akun Google (${res.user.email}) bukan akun Administrator / Operator resmi LPNU PCNU Sumenep.`;
+        return {
+          success: false,
+          error: new Error(authErrorMessage.value)
+        };
+      }
+
+      // AKUN ADMIN TERVERIFIKASI
       setRole('admin');
       currentAdminUser.value = {
         id: res.user.uid,
         email: res.user.email,
-        nama: res.user.displayName || cleanEmail.split('@')[0] || 'Operator LPNU',
-        photoURL: '',
+        nama: res.user.displayName || 'Admin LPNU PCNU',
+        photoURL: res.user.photoURL || '',
         isLoggedIn: true
       };
-      isAuthLoading.value = false;
-      return { success: true };
+      return { success: true, user: res.user };
+    } else if (!res.userCancelled) {
+      authErrorMessage.value = getAuthErrorMessage(res.error);
     }
-
-    // 2. Fallback Kredensial Resmi Operator LPNU (Bila email auth belum diaktifkan di Firebase Console)
-    const isLpnuMaster = (
-      (cleanEmail === 'admin@lpnu-sumenep.or.id' || cleanEmail === 'admin' || cleanEmail === 'operator') &&
-      (cleanPass === 'saleha2026' || cleanPass === 'lpnu2026' || cleanPass === 'admin123')
-    );
-
-    if (isLpnuMaster) {
-      isAdminBypass.value = true;
-      localStorage.setItem('saleha_admin_bypass', 'true');
-      setRole('admin');
-      currentAdminUser.value = {
-        id: 'admin_lpnu_master',
-        email: 'admin@lpnu-sumenep.or.id',
-        nama: 'Tim Operator LPNU PCNU',
-        photoURL: '',
-        isLoggedIn: true
-      };
-      isAuthLoading.value = false;
-      return { success: true };
-    }
-
-    isAuthLoading.value = false;
-    authErrorMessage.value = res.error ? getAuthErrorMessage(res.error) : 'Email atau kata sandi operator salah.';
-    return { success: false, error: res.error || new Error(authErrorMessage.value) };
-  }
-
-  // Bypass Masuk Cepat Operator untuk Keperluan Lapangan / Demo
-  function loginAdminDemo() {
-    isAdminBypass.value = true;
-    localStorage.setItem('saleha_admin_bypass', 'true');
-    setRole('admin');
-    currentAdminUser.value = {
-      id: 'admin_demo_lpnu',
-      email: 'admin@lpnu-sumenep.or.id',
-      nama: 'Petugas LPNU (Mode Demo)',
-      photoURL: '',
-      isLoggedIn: true
-    };
-    return { success: true };
+    return res;
   }
 
   async function logout() {
@@ -469,9 +462,8 @@ export function useSalehaStore() {
       console.warn('Firebase logout warning:', e);
     }
     firebaseUser.value = null;
-    isAdminBypass.value = false;
-    localStorage.removeItem('saleha_admin_bypass');
-    setRole('umkm');
+    activeRole.value = 'umkm';
+    localStorage.setItem(ROLE_KEY, 'umkm');
     isAuthLoading.value = false;
     return { success: true };
   }
@@ -480,7 +472,7 @@ export function useSalehaStore() {
     APP_VERSION,
     permohonanList,
     activeRole,
-    isAdminBypass,
+    isAdminUser,
     currentUmkmUser,
     currentAdminUser,
     firebaseUser,
@@ -494,8 +486,6 @@ export function useSalehaStore() {
     loginUmkm,
     loginGoogle,
     loginAdminGoogle,
-    loginAdminEmail,
-    loginAdminDemo,
     logout,
     createPermohonan,
     updateStatus,

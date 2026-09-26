@@ -18,8 +18,8 @@
         </div>
       </div>
 
-      <!-- PINTU MASUK WAJIB: LOGIN DENGAN GOOGLE / ADMIN -->
-      <LoginGate v-else-if="!store.firebaseUser.value && !store.isAdminBypass.value" />
+      <!-- PINTU MASUK WAJIB: LOGIN DENGAN GOOGLE -->
+      <LoginGate v-else-if="!store.firebaseUser.value" />
 
       <!-- MAIN APP INTERFACE (Hanya bisa dibuka setelah login) -->
       <template v-else>
@@ -29,33 +29,12 @@
         <!-- Main Scrollable Screen -->
         <main class="flex-1 pb-16 overflow-y-auto">
           
-          <!-- ADMIN LPNU VIEW (Dengan Proteksi Pintu Admin) -->
-          <div v-if="store.activeRole.value === 'admin'">
-            <!-- Pintu Terkunci jika belum login -->
-            <div v-if="!store.firebaseUser.value" class="p-6 text-center space-y-4 my-auto py-20">
-              <div class="w-14 h-14 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-xs">
-                🔒
-              </div>
-              <div>
-                <h3 class="font-extrabold text-slate-800 text-sm">Pintu Masuk Khusus Operator</h3>
-                <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
-                  Dashboard antrean pengurusan NIB hanya dapat diakses oleh Tim Pendamping & Operator LPNU PCNU Sumenep.
-                </p>
-              </div>
-              <button
-                @click="store.loginGoogle"
-                type="button"
-                class="py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-2 transition-all"
-              >
-                <span>Masuk dengan Google Operator</span>
-              </button>
-            </div>
-
-            <!-- Dashboard Admin jika sudah login -->
-            <AdminDashboard v-else />
+          <!-- ADMIN LPNU VIEW (Hanya jika akun terverifikasi sebagai Admin resmi) -->
+          <div v-if="store.activeRole.value === 'admin' && store.isAdminUser.value">
+            <AdminDashboard />
           </div>
 
-          <!-- UMKM VIEW (5 TABS) -->
+          <!-- UMKM VIEW (Untuk semua pelaku UMKM) -->
           <div v-else>
             <!-- Tab 1: Home (Beranda) -->
             <div v-if="umkmTab === 'home'">

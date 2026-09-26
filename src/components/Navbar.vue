@@ -22,31 +22,16 @@
         </div>
       </div>
 
-      <!-- Controls: Segmented Switcher & Circular Settings -->
+      <!-- Controls -->
       <div class="flex items-center gap-2">
         
-        <!-- Segmented Control Pill -->
-        <div class="bg-emerald-950/70 p-0.5 rounded-full flex items-center border border-emerald-700/60 shadow-inner">
-          <button
-            @click="store.setRole('umkm')"
-            type="button"
-            class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all leading-none"
-            :class="store.activeRole.value === 'umkm'
-              ? 'bg-white text-emerald-950 shadow-xs'
-              : 'text-emerald-200 hover:text-white'"
-          >
-            UMKM
-          </button>
-          <button
-            @click="store.setRole('admin')"
-            type="button"
-            class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all leading-none"
-            :class="store.activeRole.value === 'admin'
-              ? 'bg-amber-400 text-emerald-950 shadow-xs'
-              : 'text-emerald-200 hover:text-white'"
-          >
-            Admin
-          </button>
+        <!-- Admin Indicator Badge (Hanya tampil jika Admin resmi yang login) -->
+        <div
+          v-if="store.activeRole.value === 'admin' && store.isAdminUser.value"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400 text-emerald-950 text-[10px] font-black tracking-wide shadow-xs border border-amber-300"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-950 animate-pulse"></span>
+          <span>ADMIN OPERATOR</span>
         </div>
 
         <!-- Settings / User Avatar Button -->
