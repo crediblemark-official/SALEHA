@@ -17,7 +17,46 @@
       </span>
     </div>
 
-    <!-- Quick Action 3-Services Grid (Directly touching header, no gap) -->
+    <!-- Announcement Banner LPNU (Real-time Broadcast from Admin) -->
+    <div
+      v-if="activePengumuman"
+      @click="selectedPengumuman = activePengumuman"
+      class="bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border-b border-amber-200/90 px-3.5 py-2.5 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-amber-100/90 active:bg-amber-200/60 transition-colors shadow-2xs"
+    >
+      <div class="flex items-start gap-2.5 min-w-0">
+        <div class="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+          📢
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 leading-none">
+            <span
+              class="px-1.5 py-0.2 rounded text-[8.5px] font-extrabold uppercase tracking-wider"
+              :class="getBadgeClass(activePengumuman.kategori)"
+            >
+              {{ activePengumuman.kategori || 'INFO' }}
+            </span>
+            <span class="text-[9.5px] text-amber-900 font-bold truncate">
+              Pengumuman LPNU
+            </span>
+          </div>
+          <h4 class="text-xs font-bold text-slate-900 truncate mt-1 leading-tight">
+            {{ activePengumuman.judul }}
+          </h4>
+          <p class="text-[10px] text-slate-600 truncate mt-0.5">
+            {{ activePengumuman.isi }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1 shrink-0 text-amber-800 font-bold text-[10px]">
+        <span class="hidden sm:inline">Lihat</span>
+        <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Quick Action 3-Services Grid (Directly touching header/banner, no gap) -->
     <div class="bg-white border-b border-slate-200 p-3.5">
       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 leading-none">
         Pilih Layanan Pendampingan Gratis
@@ -189,6 +228,13 @@
       @close="showAdminModal = false"
     />
 
+    <!-- Modal Detail Pengumuman LPNU -->
+    <ModalDetailPengumuman
+      :is-open="!!selectedPengumuman"
+      :pengumuman="selectedPengumuman"
+      @close="selectedPengumuman = null"
+    />
+
   </div>
 </template>
 
@@ -198,11 +244,34 @@ import { useSalehaStore } from '../composables/useSalehaStore';
 import StatusBadge from './StatusBadge.vue';
 import VersionBadge from './VersionBadge.vue';
 import ModalAdminLogin from './ModalAdminLogin.vue';
+import ModalDetailPengumuman from './ModalDetailPengumuman.vue';
 
 defineEmits(['switchTab']);
 
 const store = useSalehaStore();
 const showAdminModal = ref(false);
+const selectedPengumuman = ref(null);
+
+// Ambil pengumuman pertama yang aktif
+const activePengumuman = computed(() => {
+  const list = store.pengumumanList.value || [];
+  return list.find(p => p.status_aktif !== false) || null;
+});
+
+function getBadgeClass(kategori) {
+  switch ((kategori || '').toUpperCase()) {
+    case 'PENTING':
+      return 'bg-rose-100 text-rose-800 border border-rose-300';
+    case 'SEHATI':
+      return 'bg-teal-100 text-teal-800 border border-teal-300';
+    case 'PELATIHAN':
+      return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+    case 'BAZAR':
+      return 'bg-amber-100 text-amber-800 border border-amber-300';
+    default:
+      return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+  }
+}
 
 const latestTicket = computed(() => {
   return store.myPermohonan.value[0] || null;

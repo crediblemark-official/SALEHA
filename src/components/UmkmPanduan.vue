@@ -8,14 +8,30 @@
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           Pusat Bantuan &amp; Edukasi UMKM
         </span>
-        <span class="text-[10px] text-emerald-300 font-medium">LPNU Sumenep</span>
+        <button
+          @click="handleSyncFromSheet"
+          type="button"
+          :disabled="store.isKontenBantuanLoading.value"
+          title="Perbarui teks bantuan dari Google Sheets"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-800/80 hover:bg-emerald-700 border border-emerald-600/70 text-[9.5px] text-emerald-100 font-medium active:scale-95 transition-all"
+        >
+          <span :class="{ 'animate-spin': store.isKontenBantuanLoading.value }">🔄</span>
+          <span>{{ store.isKontenBantuanLoading.value ? 'Sinkron...' : 'Sync Sheet' }}</span>
+        </button>
       </div>
+
       <h2 class="text-base font-black tracking-tight leading-snug">
         Panduan Legalitas Usaha
       </h2>
       <p class="text-xs text-emerald-100/90 mt-1 leading-relaxed">
         Layanan pendampingan NIB, Halal SEHATI, dan P-IRT gratis untuk kemandirian ekonomi Nahdliyin se-Kabupaten Sumenep.
       </p>
+
+      <!-- Toast Notifikasi Pembaruan Konten -->
+      <div v-if="syncNotification" class="mt-2.5 p-1.5 px-2.5 bg-emerald-950/80 border border-emerald-600 rounded-lg text-[10.5px] text-emerald-200 flex items-center justify-between animate-fade-in">
+        <span>{{ syncNotification }}</span>
+        <button @click="syncNotification = ''" class="text-xs font-bold text-emerald-300 ml-2">✕</button>
+      </div>
     </div>
 
     <!-- Quick Navigation Filter Chips -->
@@ -78,7 +94,7 @@
                 NIB
               </span>
               <div>
-                <h4 class="text-xs font-bold text-slate-800">Nomor Induk Berusaha (OSS-RBA)</h4>
+                <h4 class="text-xs font-bold text-slate-800">{{ nibData.judul }}</h4>
                 <p class="text-[10.5px] text-slate-500 mt-0.5">Kementerian Investasi / BKPM RI</p>
               </div>
             </div>
@@ -88,24 +104,19 @@
           </div>
 
           <div v-if="expanded === 'nib'" class="px-3.5 pb-3.5 pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-2 bg-slate-50/40">
-            <p class="leading-relaxed">
-              <strong>NIB</strong> adalah identitas resmi pelaku usaha yang menggantikan TDP, SIUP, dan IUI. Berlaku sebagai izin edar dasar bagi usaha skala mikro dan kecil berisiko rendah.
+            <p class="leading-relaxed whitespace-pre-line">
+              {{ nibData.deskripsi }}
             </p>
-            <div class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
+            <div v-if="nibData.syarat.length > 0" class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
               <span class="font-bold text-slate-800 block text-[11px]">Syarat Pengajuan:</span>
               <ul class="list-disc list-inside text-[11px] text-slate-600 space-y-0.5">
-                <li>KTP elektronik (NIK) pemilik usaha yang masih aktif.</li>
-                <li>Nomor WhatsApp aktif untuk konfirmasi petugas.</li>
-                <li>Email aktif (dibantu pembuatan jika belum punya).</li>
-                <li>Foto tempat usaha atau proses produksi.</li>
+                <li v-for="(syarat, idx) in nibData.syarat" :key="idx">{{ syarat }}</li>
               </ul>
             </div>
-            <div class="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200 space-y-1">
+            <div v-if="nibData.manfaat.length > 0" class="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200 space-y-1">
               <span class="font-bold text-emerald-900 block text-[11px]">Manfaat untuk UMKM:</span>
               <ul class="list-disc list-inside text-[11px] text-emerald-800 space-y-0.5">
-                <li>Syarat wajib pengajuan pinjaman KUR perbankan tanpa agunan.</li>
-                <li>Mendapatkan perlindungan dan kepastian hukum berusaha.</li>
-                <li>Syarat mutlak untuk mendaftar Sertifikasi Halal dan P-IRT.</li>
+                <li v-for="(manfaat, idx) in nibData.manfaat" :key="idx">{{ manfaat }}</li>
               </ul>
             </div>
           </div>
@@ -122,7 +133,7 @@
                 HALAL
               </span>
               <div>
-                <h4 class="text-xs font-bold text-slate-800">Sertifikat Halal (SEHATI BPJPH)</h4>
+                <h4 class="text-xs font-bold text-slate-800">{{ halalData.judul }}</h4>
                 <p class="text-[10.5px] text-slate-500 mt-0.5">BPJPH Kementerian Agama RI</p>
               </div>
             </div>
@@ -132,24 +143,19 @@
           </div>
 
           <div v-if="expanded === 'halal'" class="px-3.5 pb-3.5 pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-2 bg-slate-50/40">
-            <p class="leading-relaxed">
-              Program <strong>Sertifikasi Halal Gratis (SEHATI)</strong> jalur <em>Self-Declare</em> untuk usaha mikro dan kecil dengan pendampingan langsung oleh Petugas Pendamping Produk Halal (P3H) LPNU.
+            <p class="leading-relaxed whitespace-pre-line">
+              {{ halalData.deskripsi }}
             </p>
-            <div class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
+            <div v-if="halalData.syarat.length > 0" class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
               <span class="font-bold text-slate-800 block text-[11px]">Kriteria Produk yang Berhak:</span>
               <ul class="list-disc list-inside text-[11px] text-slate-600 space-y-0.5">
-                <li>Produk makanan/minuman dengan bahan baku tidak berisiko (non-sembelihan hewan mandiri).</li>
-                <li>Bahan baku sudah bersertifikat halal atau terdaftar dalam *positive list* BPJPH.</li>
-                <li>Proses pengolahan sederhana dan higienis.</li>
-                <li>Memiliki NIB yang telah terbit.</li>
+                <li v-for="(syarat, idx) in halalData.syarat" :key="idx">{{ syarat }}</li>
               </ul>
             </div>
-            <div class="bg-teal-50/70 p-2.5 rounded-lg border border-teal-200 space-y-1">
+            <div v-if="halalData.manfaat.length > 0" class="bg-teal-50/70 p-2.5 rounded-lg border border-teal-200 space-y-1">
               <span class="font-bold text-teal-900 block text-[11px]">Keuntungan Memiliki Label Halal:</span>
               <ul class="list-disc list-inside text-[11px] text-teal-800 space-y-0.5">
-                <li>Meningkatkan kepercayaan konsumen dan berkah usaha bagi masyarakat Nahdliyin.</li>
-                <li>Memenuhi kewajiban sertifikasi halal sesuai UU Jaminan Produk Halal.</li>
-                <li>Membuka peluang masuk ke toko swalayan, oleh-oleh haji/umrah, dan minimarket modern.</li>
+                <li v-for="(manfaat, idx) in halalData.manfaat" :key="idx">{{ manfaat }}</li>
               </ul>
             </div>
           </div>
@@ -166,7 +172,7 @@
                 P-IRT
               </span>
               <div>
-                <h4 class="text-xs font-bold text-slate-800">Sertifikat P-IRT (Dinas Kesehatan)</h4>
+                <h4 class="text-xs font-bold text-slate-800">{{ pirtData.judul }}</h4>
                 <p class="text-[10.5px] text-slate-500 mt-0.5">Dinas Kesehatan &amp; BPOM RI</p>
               </div>
             </div>
@@ -176,22 +182,20 @@
           </div>
 
           <div v-if="expanded === 'pirt'" class="px-3.5 pb-3.5 pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-2 bg-slate-50/40">
-            <p class="leading-relaxed">
-              <strong>Izin Edar Pangan Industri Rumah Tangga (SPP-IRT)</strong> adalah jaminan bahwa produk makanan dan minuman olahan rumahan di Kabupaten Sumenep telah memenuhi standar higiene sanitasi pangan.
+            <p class="leading-relaxed whitespace-pre-line">
+              {{ pirtData.deskripsi }}
             </p>
-            <div class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
+            <div v-if="pirtData.syarat.length > 0" class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
               <span class="font-bold text-slate-800 block text-[11px]">Contoh Produk P-IRT:</span>
               <ul class="list-disc list-inside text-[11px] text-slate-600 space-y-0.5">
-                <li>Kerupuk, rengginang lorjuk, keripik singkong, kacang asin khas Sumenep.</li>
-                <li>Kue kering, roti kering, biskuit, dan olahan tepung.</li>
-                <li>Minuman serbuk jahe, kopi bubuk, jamu serbuk, dan gula aren semut.</li>
+                <li v-for="(syarat, idx) in pirtData.syarat" :key="idx">{{ syarat }}</li>
               </ul>
             </div>
-            <div class="bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 space-y-1">
-              <span class="font-bold text-amber-900 block text-[11px]">Catatan:</span>
-              <p class="text-[11px] text-amber-800 leading-snug">
-                Produk dengan ketahanan simpan kurang dari 7 hari atau olahan daging beku (frozen food) masuk ke kategori izin BPOM langsung.
-              </p>
+            <div v-if="pirtData.manfaat.length > 0" class="bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 space-y-1">
+              <span class="font-bold text-amber-900 block text-[11px]">Catatan Penting:</span>
+              <ul class="list-disc list-inside text-[11px] text-amber-800 space-y-0.5">
+                <li v-for="(manfaat, idx) in pirtData.manfaat" :key="idx">{{ manfaat }}</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -267,49 +271,18 @@
         </h3>
 
         <div class="space-y-2">
-          <!-- FAQ 1 -->
-          <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
+          <!-- FAQ Loop -->
+          <div
+            v-for="(faq, fIdx) in faqList"
+            :key="fIdx"
+            class="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs"
+          >
             <h4 class="text-xs font-bold text-slate-800 flex items-start gap-1.5 leading-snug">
               <span class="text-emerald-700 font-black">Q:</span>
-              <span>Apakah pendampingan dari LPNU dipungut biaya?</span>
+              <span>{{ faq.tanya }}</span>
             </h4>
-            <p class="text-[11px] text-slate-600 mt-1.5 pl-4 leading-relaxed">
-              <strong>Tidak dipungut biaya (Gratis)</strong> untuk pengurusan NIB dan Sertifikasi Halal skema SEHATI (Self-Declare) bagi pelaku UMKM Nahdliyin skala mikro dan kecil se-Kabupaten Sumenep.
-            </p>
-          </div>
-
-          <!-- FAQ 2 -->
-          <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
-            <h4 class="text-xs font-bold text-slate-800 flex items-start gap-1.5 leading-snug">
-              <span class="text-emerald-700 font-black">Q:</span>
-              <span>Berapa lama waktu proses hingga izin terbit?</span>
-            </h4>
-            <div class="text-[11px] text-slate-600 mt-1.5 pl-4 space-y-1 leading-relaxed">
-              <p>• <strong>NIB:</strong> 1–3 hari kerja jika berkas identitas dan KBLI lengkap.</p>
-              <p>• <strong>Halal SEHATI:</strong> 7–21 hari kerja (mengikuti alur verifikasi BPJPH dan fatwa MUI).</p>
-              <p>• <strong>P-IRT:</strong> 3–7 hari kerja setelah peninjauan Dinkes.</p>
-            </div>
-          </div>
-
-          <!-- FAQ 3 -->
-          <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
-            <h4 class="text-xs font-bold text-slate-800 flex items-start gap-1.5 leading-snug">
-              <span class="text-emerald-700 font-black">Q:</span>
-              <span>Bagaimana jika saya belum memiliki email aktif?</span>
-            </h4>
-            <p class="text-[11px] text-slate-600 mt-1.5 pl-4 leading-relaxed">
-              Anda tidak perlu khawatir. Petugas operator LPNU di kecamatan Anda akan memandu dan membantu pembuatan akun email resmi khusus untuk aktivasi portal OSS pemerintah.
-            </p>
-          </div>
-
-          <!-- FAQ 4 -->
-          <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
-            <h4 class="text-xs font-bold text-slate-800 flex items-start gap-1.5 leading-snug">
-              <span class="text-emerald-700 font-black">Q:</span>
-              <span>Apakah pelaku usaha di kepulauan Sumenep bisa ikut?</span>
-            </h4>
-            <p class="text-[11px] text-slate-600 mt-1.5 pl-4 leading-relaxed">
-              <strong>Tentu bisa!</strong> Layanan SALEHA mencakup seluruh 27 kecamatan di Kabupaten Sumenep, baik wilayah daratan maupun kepulauan (Kangean, Sapeken, Masalembu, Raas, Gayam, Nonggunong, dll.) secara daring penuh.
+            <p class="text-[11px] text-slate-600 mt-1.5 pl-4 leading-relaxed whitespace-pre-line">
+              {{ faq.jawab }}
             </p>
           </div>
         </div>
@@ -329,10 +302,9 @@
               🏢
             </div>
             <div>
-              <h4 class="text-xs font-bold text-slate-800">Posko Pusat LPNU PCNU Sumenep</h4>
-              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                Gedung PCNU Kabupaten Sumenep<br />
-                Jl. Trunojoyo No. 295, Gedungan, Kec. Batuan, Kabupaten Sumenep, Jawa Timur 69451
+              <h4 class="text-xs font-bold text-slate-800">{{ poskoData.judul }}</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug whitespace-pre-line">
+                {{ poskoData.deskripsi }}
               </p>
             </div>
           </div>
@@ -340,11 +312,11 @@
           <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[10.5px]">
             <div class="bg-slate-50 p-2 rounded-lg border border-slate-200">
               <span class="text-slate-400 block font-medium">Hari Kerja:</span>
-              <span class="font-bold text-slate-700">Senin – Sabtu</span>
+              <span class="font-bold text-slate-700">{{ poskoData.hari }}</span>
             </div>
             <div class="bg-slate-50 p-2 rounded-lg border border-slate-200">
               <span class="text-slate-400 block font-medium">Jam Layanan:</span>
-              <span class="font-bold text-slate-700">08.00 – 16.00 WIB</span>
+              <span class="font-bold text-slate-700">{{ poskoData.jam }}</span>
             </div>
           </div>
 
@@ -387,17 +359,151 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useSalehaStore } from '../composables/useSalehaStore';
 import VersionBadge from './VersionBadge.vue';
 import ModalAdminLogin from './ModalAdminLogin.vue';
+
+const store = useSalehaStore();
 
 const activeSection = ref('all');
 const expanded = ref('nib'); // default open NIB
 const showAdminModal = ref(false);
+const syncNotification = ref('');
 
 function toggleExpand(key) {
   expanded.value = expanded.value === key ? null : key;
 }
+
+async function handleSyncFromSheet() {
+  syncNotification.value = '';
+  const list = await store.refreshKontenBantuan();
+  if (list && list.length > 0) {
+    syncNotification.value = `Berhasil menyinkronkan ${list.length} item panduan dari Google Sheets.`;
+  } else {
+    syncNotification.value = 'Teks panduan diperbarui ke data bawaan sistem.';
+  }
+  setTimeout(() => {
+    syncNotification.value = '';
+  }, 4000);
+}
+
+// 1. Data NIB Dinamis (Sheet Key: "NIB")
+const nibData = computed(() => {
+  const item = store.getKontenBantuanItem('NIB');
+  return {
+    judul: item?.judul || 'Nomor Induk Berusaha (OSS-RBA)',
+    deskripsi: item?.deskripsi_utama || 'NIB adalah identitas resmi pelaku usaha yang menggantikan TDP, SIUP, dan IUI. Berlaku sebagai izin edar dasar bagi usaha skala mikro dan kecil berisiko rendah.',
+    syarat: item?.poin_syarat ? item.poin_syarat.split('\n').filter(s => s.trim()) : [
+      'KTP elektronik (NIK) pemilik usaha yang masih aktif.',
+      'Nomor WhatsApp aktif untuk konfirmasi petugas.',
+      'Email aktif (dibantu pembuatan jika belum punya).',
+      'Foto tempat usaha atau proses produksi.'
+    ],
+    manfaat: item?.poin_manfaat ? item.poin_manfaat.split('\n').filter(s => s.trim()) : [
+      'Syarat wajib pengajuan pinjaman KUR perbankan tanpa agunan.',
+      'Mendapatkan perlindungan dan kepastian hukum berusaha.',
+      'Syarat mutlak untuk mendaftar Sertifikasi Halal dan P-IRT.'
+    ]
+  };
+});
+
+// 2. Data Halal Dinamis (Sheet Key: "HALAL")
+const halalData = computed(() => {
+  const item = store.getKontenBantuanItem('HALAL');
+  return {
+    judul: item?.judul || 'Sertifikat Halal (SEHATI BPJPH)',
+    deskripsi: item?.deskripsi_utama || 'Program Sertifikasi Halal Gratis (SEHATI) jalur Self-Declare untuk usaha mikro dan kecil dengan pendampingan langsung oleh Petugas Pendamping Produk Halal (P3H) LPNU.',
+    syarat: item?.poin_syarat ? item.poin_syarat.split('\n').filter(s => s.trim()) : [
+      'Produk makanan/minuman dengan bahan baku tidak berisiko (non-sembelihan hewan mandiri).',
+      'Bahan baku sudah bersertifikat halal atau terdaftar dalam positive list BPJPH.',
+      'Proses pengolahan sederhana dan higienis.',
+      'Memiliki NIB yang telah terbit.'
+    ],
+    manfaat: item?.poin_manfaat ? item.poin_manfaat.split('\n').filter(s => s.trim()) : [
+      'Meningkatkan kepercayaan konsumen dan berkah usaha bagi masyarakat Nahdliyin.',
+      'Memenuhi kewajiban sertifikasi halal sesuai UU Jaminan Produk Halal.',
+      'Membuka peluang masuk ke toko swalayan, oleh-oleh haji/umrah, dan minimarket modern.'
+    ]
+  };
+});
+
+// 3. Data PIRT Dinamis (Sheet Key: "PIRT")
+const pirtData = computed(() => {
+  const item = store.getKontenBantuanItem('PIRT');
+  return {
+    judul: item?.judul || 'Sertifikat P-IRT (Dinas Kesehatan)',
+    deskripsi: item?.deskripsi_utama || 'Izin Edar Pangan Industri Rumah Tangga (SPP-IRT) adalah jaminan bahwa produk makanan dan minuman olahan rumahan di Kabupaten Sumenep telah memenuhi standar higiene sanitasi pangan.',
+    syarat: item?.poin_syarat ? item.poin_syarat.split('\n').filter(s => s.trim()) : [
+      'Kerupuk, rengginang lorjuk, keripik singkong, kacang asin khas Sumenep.',
+      'Kue kering, roti kering, biskuit, dan olahan tepung.',
+      'Minuman serbuk jahe, kopi bubuk, jamu serbuk, dan gula aren semut.'
+    ],
+    manfaat: item?.poin_manfaat ? item.poin_manfaat.split('\n').filter(s => s.trim()) : [
+      'Produk dengan ketahanan simpan kurang dari 7 hari atau olahan daging beku (frozen food) masuk ke kategori izin BPOM langsung.'
+    ]
+  };
+});
+
+// 4. Data FAQ Dinamis (Sheet Key: "FAQ_1", "FAQ_2", ...)
+const faqList = computed(() => {
+  const list = [];
+  const defaultFaq = [
+    {
+      tanya: 'Apakah pendampingan dari LPNU dipungut biaya?',
+      jawab: 'Tidak dipungut biaya (Gratis) untuk pengurusan NIB dan Sertifikasi Halal skema SEHATI (Self-Declare) bagi pelaku UMKM Nahdliyin skala mikro dan kecil se-Kabupaten Sumenep.'
+    },
+    {
+      tanya: 'Berapa lama waktu proses hingga izin terbit?',
+      jawab: '• NIB: 1–3 hari kerja jika berkas identitas dan KBLI lengkap.\n• Halal SEHATI: 7–21 hari kerja (mengikuti alur verifikasi BPJPH dan fatwa MUI).\n• P-IRT: 3–7 hari kerja setelah peninjauan Dinkes.'
+    },
+    {
+      tanya: 'Bagaimana jika saya belum memiliki email aktif?',
+      jawab: 'Anda tidak perlu khawatir. Petugas operator LPNU di kecamatan Anda akan memandu dan membantu pembuatan akun email resmi khusus untuk aktivasi portal OSS pemerintah.'
+    },
+    {
+      tanya: 'Apakah pelaku usaha di kepulauan Sumenep bisa ikut?',
+      jawab: 'Tentu bisa! Layanan SALEHA mencakup seluruh 27 kecamatan di Kabupaten Sumenep, baik wilayah daratan maupun kepulauan (Kangean, Sapeken, Masalembu, Raas, Gayam, Nonggunong, dll.) secara daring penuh.'
+    }
+  ];
+
+  for (let i = 1; i <= 4; i++) {
+    const item = store.getKontenBantuanItem(`FAQ_${i}`);
+    if (item && item.judul && item.deskripsi_utama) {
+      list.push({
+        tanya: item.judul,
+        jawab: item.deskripsi_utama
+      });
+    } else {
+      list.push(defaultFaq[i - 1]);
+    }
+  }
+
+  // Tambahan FAQ kustom lain dari sheet jika ada
+  const allItems = store.kontenBantuanList.value || [];
+  allItems.forEach(item => {
+    const key = (item.id_key || '').toUpperCase();
+    if (key.startsWith('FAQ_') && !['FAQ_1', 'FAQ_2', 'FAQ_3', 'FAQ_4'].includes(key)) {
+      list.push({
+        tanya: item.judul,
+        jawab: item.deskripsi_utama
+      });
+    }
+  });
+
+  return list;
+});
+
+// 5. Data Posko Dinamis (Sheet Key: "POSKO")
+const poskoData = computed(() => {
+  const item = store.getKontenBantuanItem('POSKO');
+  return {
+    judul: item?.judul || 'Posko Pusat LPNU PCNU Sumenep',
+    deskripsi: item?.deskripsi_utama || 'Gedung PCNU Kabupaten Sumenep\nJl. Trunojoyo No. 295, Gedungan, Kec. Batuan, Kabupaten Sumenep, Jawa Timur 69451',
+    hari: item?.poin_syarat || 'Senin – Sabtu',
+    jam: item?.poin_manfaat || '08.00 – 16.00 WIB'
+  };
+});
 </script>
 
 <style scoped>
@@ -407,5 +513,12 @@ function toggleExpand(key) {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
 }
 </style>

@@ -14,6 +14,17 @@
       </div>
 
       <div class="flex items-center gap-1.5">
+        <!-- Pengumuman Broadcast Button -->
+        <button
+          @click="showPengumumanModal = true"
+          type="button"
+          title="Kelola & Buat Pengumuman"
+          class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all shadow-xs"
+        >
+          <span>📢</span>
+          <span>Pengumuman</span>
+        </button>
+
         <!-- Export CSV Button -->
         <button
           @click="exportToCsv"
@@ -236,6 +247,12 @@
       @cancel="showLogoutConfirm = false"
     />
 
+    <!-- Modal Kelola Pengumuman Admin -->
+    <ModalKelolaPengumuman
+      :is-open="showPengumumanModal"
+      @close="showPengumumanModal = false"
+    />
+
   </div>
 </template>
 
@@ -247,12 +264,14 @@ import StatusBadge from './StatusBadge.vue';
 import ModalUpdateStatus from './ModalUpdateStatus.vue';
 import ModalKredensialEmail from './ModalKredensialEmail.vue';
 import ModalConfirm from './ModalConfirm.vue';
+import ModalKelolaPengumuman from './ModalKelolaPengumuman.vue';
 
 const store = useSalehaStore();
 const searchQuery = ref('');
 const filterStatus = ref('ALL');
 const filterKecamatan = ref('ALL');
 
+const showPengumumanModal = ref(false);
 const showUpdateModal = ref(false);
 const activeTicketForUpdate = ref(null);
 

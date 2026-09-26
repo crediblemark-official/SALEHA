@@ -8,6 +8,8 @@
  * 2. Sinkronisasi data permohonan ke Google Sheets Master: SALEHA
  * 3. Otomatis mengubah gambar Base64 menjadi Google Drive Link resmi
  * 4. Mengelola daftar hak akses Admin dinamis via Tab ADMIN_USERS
+ * 5. Mengelola Pengumuman resmi dari Admin via Tab PENGUMUMAN
+ * 6. Mengelola Teks Panduan & Edukasi Bantuan via Tab KONTEN_BANTUAN
  * =========================================================================
  */
 
@@ -18,17 +20,27 @@ const CONFIG = {
   SPREADSHEET_ID: "14HAizow9Itv-9V7KClg1HoPsI7hhjkg2qvPETRrjqIw",
   SHEET_NAME_MASTER: "MASTER_DATA",
   SHEET_NAME_REKAP: "REKAP_KECAMATAN",
-  SHEET_NAME_ADMINS: "ADMIN_USERS"
+  SHEET_NAME_ADMINS: "ADMIN_USERS",
+  SHEET_NAME_PENGUMUMAN: "PENGUMUMAN",
+  SHEET_NAME_BANTUAN: "KONTEN_BANTUAN"
 };
 
 /**
- * Endpoint GET (Digunakan untuk cek status, ambil admin, atau inisialisasi sheet)
+ * Endpoint GET (Digunakan untuk cek status, ambil admin, pengumuman, atau konten bantuan)
  */
 function doGet(e) {
   const action = e && e.parameter ? e.parameter.action : null;
   
   if (action === "getAdmins") {
     return handleGetAdmins();
+  }
+
+  if (action === "getPengumuman") {
+    return handleGetPengumuman();
+  }
+
+  if (action === "getKontenBantuan") {
+    return handleGetKontenBantuan();
   }
   
   if (action === "initDatabase" || action === "setup" || action === "fixLinks") {
@@ -62,6 +74,14 @@ function doPost(e) {
       return handleSyncSheet(payload);
     } else if (action === "getAdmins") {
       return handleGetAdmins();
+    } else if (action === "getPengumuman") {
+      return handleGetPengumuman();
+    } else if (action === "savePengumuman") {
+      return handleSavePengumuman(payload);
+    } else if (action === "getKontenBantuan") {
+      return handleGetKontenBantuan();
+    } else if (action === "saveKontenBantuan") {
+      return handleSaveKontenBantuan(payload);
     } else if (action === "initDatabase" || action === "setup") {
       return responseJson(initDatabase());
     } else {
@@ -107,8 +127,7 @@ function getSalehaSpreadsheet() {
 }
 
 /**
- * Inisialisasi Tab dan Header pada Google Sheets SALEHA
- * Sekaligus memperbaiki baris lama yang masih berisi teks Base64
+ * Inisialisasi Seluruh Tab dan Header pada Google Sheets SALEHA
  */
 function initDatabase(targetSs) {
   const ss = targetSs || getSalehaSpreadsheet();
@@ -116,7 +135,6 @@ function initDatabase(targetSs) {
   // 1. Inisialisasi Sheet Master Data
   let masterSheet = ss.getSheetByName(CONFIG.SHEET_NAME_MASTER);
   if (!masterSheet) {
-    // Jika ada 'Sheet1' bawaan yang masih kosong, ubah namanya jadi MASTER_DATA
     const sheet1 = ss.getSheetByName("Sheet1") || ss.getSheetByName("Sheet 1");
     if (sheet1) {
       masterSheet = sheet1;
@@ -134,12 +152,26 @@ function initDatabase(targetSs) {
   }
   setupAdminSheetHeaders(adminSheet);
 
-  // 3. Konversi otomatis jika ada baris lama yang berisi teks Base64 menjadi Google Drive URL
+  // 3. Inisialisasi Sheet Pengumuman Admin
+  let pengumumanSheet = ss.getSheetByName(CONFIG.SHEET_NAME_PENGUMUMAN);
+  if (!pengumumanSheet) {
+    pengumumanSheet = ss.insertSheet(CONFIG.SHEET_NAME_PENGUMUMAN);
+  }
+  setupPengumumanHeaders(pengumumanSheet);
+
+  // 4. Inisialisasi Sheet Konten Bantuan
+  let bantuanSheet = ss.getSheetByName(CONFIG.SHEET_NAME_BANTUAN);
+  if (!bantuanSheet) {
+    bantuanSheet = ss.insertSheet(CONFIG.SHEET_NAME_BANTUAN);
+  }
+  setupKontenBantuanHeaders(bantuanSheet);
+
+  // 5. Konversi otomatis jika ada baris lama yang berisi teks Base64 menjadi Google Drive URL
   const fixedCount = perbaikiLinkBase64Lama(masterSheet);
 
   return {
     success: true,
-    message: "Inisialisasi Database SALEHA Berhasil! Tab MASTER_DATA dan ADMIN_USERS telah siap. Baris base64 diperbaiki: " + fixedCount,
+    message: "Inisialisasi Database SALEHA Berhasil! Tab MASTER_DATA, ADMIN_USERS, PENGUMUMAN, dan KONTEN_BANTUAN telah siap.",
     fixedCount: fixedCount,
     spreadsheetUrl: ss.getUrl()
   };
@@ -195,7 +227,6 @@ function setupAdminSheetHeaders(sheet) {
     sheet.setFrozenRows(1);
   } catch (e) {}
 
-  // Tambahkan admin bawaan jika masih kosong
   if (sheet.getLastRow() <= 1) {
     const defaultAdmins = [
       ["rasy.ibnzawawi@gmail.com", "Rasyiqi", "Super Admin", "AKTIF"],
@@ -203,6 +234,318 @@ function setupAdminSheetHeaders(sheet) {
     ];
     sheet.getRange(2, 1, defaultAdmins.length, headers.length).setValues(defaultAdmins);
   }
+}
+
+/**
+ * Format Header Tab PENGUMUMAN dan contoh isi
+ */
+function setupPengumumanHeaders(sheet) {
+  const headers = ["ID", "Judul", "Isi_Pengumuman", "Kategori", "Tgl_Rilis", "Status_Aktif", "Penulis"];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length)
+    .setFontWeight("bold")
+    .setBackground("#057a55")
+    .setFontColor("#ffffff")
+    .setHorizontalAlignment("center");
+
+  try {
+    sheet.setFrozenRows(1);
+  } catch (e) {}
+
+  if (sheet.getLastRow() <= 1) {
+    const defaultAnnouncements = [
+      [
+        "PGM_01",
+        "Pendampingan Sertifikasi Halal Gratis (SEHATI) 2026",
+        "LPNU PCNU Kabupaten Sumenep membuka kuota pendampingan Sertifikat Halal gratis skema self-declare bagi seluruh pelaku usaha kuliner dan makanan ringan olahan Nahdliyin. Segera ajukan permohonan melalui aplikasi SALEHA.",
+        "Penting",
+        new Date().toISOString().split("T")[0],
+        "AKTIF",
+        "Tim LPNU Sumenep"
+      ]
+    ];
+    sheet.getRange(2, 1, defaultAnnouncements.length, headers.length).setValues(defaultAnnouncements);
+  }
+}
+
+/**
+ * Format Header Tab KONTEN_BANTUAN dan contoh isi yang dapat diedit langsung dari Sheet
+ */
+function setupKontenBantuanHeaders(sheet) {
+  const headers = ["ID_Key", "Kategori", "Judul", "Deskripsi_Utama", "Poin_Syarat", "Poin_Manfaat", "Status_Aktif"];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length)
+    .setFontWeight("bold")
+    .setBackground("#057a55")
+    .setFontColor("#ffffff")
+    .setHorizontalAlignment("center");
+
+  try {
+    sheet.setFrozenRows(1);
+  } catch (e) {}
+
+  if (sheet.getLastRow() <= 1) {
+    const defaultContents = [
+      [
+        "nib",
+        "JENIS_IZIN",
+        "Nomor Induk Berusaha (OSS-RBA)",
+        "Identitas resmi pelaku usaha yang diterbitkan oleh Kementerian Investasi/BKPM RI sebagai bukti legalitas utama berusaha.",
+        "• KTP elektronik (NIK) pemilik yang aktif\n• Nomor WhatsApp aktif\n• Email aktif (dibantu jika belum punya)\n• Foto tempat usaha atau proses produksi",
+        "• Syarat wajib pengajuan pinjaman KUR perbankan\n• Perlindungan dan kepastian hukum berusaha\n• Syarat mutlak Sertifikasi Halal & P-IRT",
+        "AKTIF"
+      ],
+      [
+        "halal",
+        "JENIS_IZIN",
+        "Sertifikat Halal (SEHATI BPJPH)",
+        "Program Sertifikasi Halal Gratis jalur self-declare dengan pendampingan langsung oleh Petugas Pendamping Produk Halal (P3H) LPNU Sumenep.",
+        "• Produk makanan/minuman non-sembelihan hewan mandiri\n• Bahan baku terjamin halal / terdaftar positive list\n• Memiliki NIB aktif",
+        "• Meningkatkan kepercayaan konsumen dan berkah usaha\n• Memenuhi kewajiban sertifikasi UU Jaminan Produk Halal\n• Membuka akses masuk ke toko modern & oleh-oleh haji/umrah",
+        "AKTIF"
+      ],
+      [
+        "pirt",
+        "JENIS_IZIN",
+        "Sertifikat P-IRT (Dinas Kesehatan)",
+        "Izin edar produk pangan industri rumah tangga makanan/minuman olahan kering dan tahan lebih dari 7 hari di Kabupaten Sumenep.",
+        "• Produk olahan kering: kerupuk, rengginang lorjuk, keripik singkong, kue kering, kopi\n• Memiliki NIB aktif\n• Label kemasan memenuhi standar Dinkes",
+        "• Standar higienis resmi Dinas Kesehatan\n• Aman diedarkan di pasar umum tanpa khawatir razia\n• Meningkatkan nilai jual produk lokal Sumenep",
+        "AKTIF"
+      ],
+      [
+        "faq_1",
+        "FAQ",
+        "Apakah pendampingan dari LPNU dipungut biaya?",
+        "Tidak dipungut biaya (Gratis) untuk pengurusan NIB dan Sertifikasi Halal skema SEHATI (Self-Declare) bagi pelaku UMKM Nahdliyin skala mikro dan kecil se-Kabupaten Sumenep.",
+        "",
+        "",
+        "AKTIF"
+      ],
+      [
+        "faq_2",
+        "FAQ",
+        "Berapa lama waktu proses hingga izin terbit?",
+        "NIB selesai dalam 1–3 hari kerja. Sertifikat Halal SEHATI membutuhkan waktu 7–21 hari kerja (verifikasi BPJPH & sidang fatwa). P-IRT sekitar 3–7 hari kerja.",
+        "",
+        "",
+        "AKTIF"
+      ],
+      [
+        "faq_3",
+        "FAQ",
+        "Bagaimana jika saya belum memiliki email aktif?",
+        "Anda tidak perlu khawatir. Petugas operator LPNU di kecamatan Anda akan memandu dan membantu pembuatan akun email resmi khusus untuk aktivasi portal OSS pemerintah.",
+        "",
+        "",
+        "AKTIF"
+      ],
+      [
+        "posko_alamat",
+        "POSKO",
+        "Alamat Posko LPNU PCNU Sumenep",
+        "Gedung PCNU Kabupaten Sumenep, Jl. Trunojoyo No. 295, Gedungan, Kec. Batuan, Kabupaten Sumenep, Jawa Timur 69451",
+        "",
+        "",
+        "AKTIF"
+      ],
+      [
+        "posko_hotline",
+        "POSKO",
+        "Hotline WhatsApp Pendamping",
+        "6281234567890",
+        "",
+        "",
+        "AKTIF"
+      ]
+    ];
+    sheet.getRange(2, 1, defaultContents.length, headers.length).setValues(defaultContents);
+  }
+}
+
+/**
+ * Handle Pengambilan Pengumuman Aktif
+ */
+function handleGetPengumuman() {
+  const ss = getSalehaSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_PENGUMUMAN);
+  if (!sheet) {
+    initDatabase(ss);
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME_PENGUMUMAN);
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const list = [];
+
+  // Baris 1: ["ID", "Judul", "Isi_Pengumuman", "Kategori", "Tgl_Rilis", "Status_Aktif", "Penulis"]
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const id = String(row[0] || ("PGM_" + i)).trim();
+    const judul = String(row[1] || "").trim();
+    const isi = String(row[2] || "").trim();
+    const kategori = String(row[3] || "Info").trim();
+    const tgl = String(row[4] || "").trim();
+    const status = String(row[5] || "AKTIF").trim().toUpperCase();
+    const penulis = String(row[6] || "LPNU").trim();
+
+    if (judul && (status === "AKTIF" || status === "TRUE" || status === "1")) {
+      list.push({
+        id: id,
+        judul: judul,
+        isi: isi,
+        kategori: kategori,
+        tgl_rilis: tgl,
+        status_aktif: status,
+        penulis: penulis
+      });
+    }
+  }
+
+  return responseJson({
+    success: true,
+    pengumuman: list
+  });
+}
+
+/**
+ * Handle Simpan Pengumuman dari Admin ke Sheet
+ */
+function handleSavePengumuman(payload) {
+  const p = payload.data;
+  if (!p || !p.judul) {
+    return responseJson({ success: false, error: "Judul pengumuman wajib diisi" });
+  }
+
+  const ss = getSalehaSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_PENGUMUMAN);
+  if (!sheet) {
+    initDatabase(ss);
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME_PENGUMUMAN);
+  }
+
+  const id = p.id || ("PGM_" + Date.now());
+  const tgl = p.tgl_rilis || new Date().toISOString().split("T")[0];
+  const rowValues = [
+    id,
+    p.judul || "",
+    p.isi || "",
+    p.kategori || "Info",
+    tgl,
+    p.status_aktif || "AKTIF",
+    p.penulis || "Admin LPNU"
+  ];
+
+  const data = sheet.getDataRange().getValues();
+  let rowToUpdate = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === id) {
+      rowToUpdate = i + 1;
+      break;
+    }
+  }
+
+  if (rowToUpdate > 0) {
+    sheet.getRange(rowToUpdate, 1, 1, rowValues.length).setValues([rowValues]);
+  } else {
+    sheet.appendRow(rowValues);
+  }
+
+  return responseJson({
+    success: true,
+    id: id,
+    action: rowToUpdate > 0 ? "updated" : "appended"
+  });
+}
+
+/**
+ * Handle Pengambilan Teks Konten Bantuan dari Sheet KONTEN_BANTUAN
+ */
+function handleGetKontenBantuan() {
+  const ss = getSalehaSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_BANTUAN);
+  if (!sheet) {
+    initDatabase(ss);
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME_BANTUAN);
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const list = [];
+
+  // Baris 1: ["ID_Key", "Kategori", "Judul", "Deskripsi_Utama", "Poin_Syarat", "Poin_Manfaat", "Status_Aktif"]
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const key = String(row[0] || "").trim();
+    const kategori = String(row[1] || "").trim();
+    const judul = String(row[2] || "").trim();
+    const deskripsi = String(row[3] || "").trim();
+    const syarat = String(row[4] || "").trim();
+    const manfaat = String(row[5] || "").trim();
+    const status = String(row[6] || "AKTIF").trim().toUpperCase();
+
+    if (key && (status === "AKTIF" || status === "TRUE" || status === "1")) {
+      list.push({
+        id_key: key,
+        kategori: kategori,
+        judul: judul,
+        deskripsi: deskripsi,
+        syarat: syarat,
+        manfaat: manfaat
+      });
+    }
+  }
+
+  return responseJson({
+    success: true,
+    konten: list
+  });
+}
+
+/**
+ * Handle Simpan Konten Bantuan ke Sheet
+ */
+function handleSaveKontenBantuan(payload) {
+  const item = payload.data;
+  if (!item || !item.id_key) {
+    return responseJson({ success: false, error: "id_key wajib diisi" });
+  }
+
+  const ss = getSalehaSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_BANTUAN);
+  if (!sheet) {
+    initDatabase(ss);
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME_BANTUAN);
+  }
+
+  const rowValues = [
+    item.id_key,
+    item.kategori || "UMUM",
+    item.judul || "",
+    item.deskripsi || "",
+    item.syarat || "",
+    item.manfaat || "",
+    item.status_aktif || "AKTIF"
+  ];
+
+  const data = sheet.getDataRange().getValues();
+  let rowToUpdate = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === item.id_key) {
+      rowToUpdate = i + 1;
+      break;
+    }
+  }
+
+  if (rowToUpdate > 0) {
+    sheet.getRange(rowToUpdate, 1, 1, rowValues.length).setValues([rowValues]);
+  } else {
+    sheet.appendRow(rowValues);
+  }
+
+  return responseJson({
+    success: true,
+    id_key: item.id_key,
+    action: rowToUpdate > 0 ? "updated" : "appended"
+  });
 }
 
 /**

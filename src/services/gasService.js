@@ -199,5 +199,85 @@ export const gasService = {
       };
     }
     return { isAdmin: false };
+  },
+
+  /**
+   * Ambil teks konten bantuan dinamis dari Google Sheets (Tab KONTEN_BANTUAN)
+   */
+  async fetchKontenBantuanFromSheet() {
+    const gasUrl = this.getGasUrl();
+    if (gasUrl) {
+      try {
+        const url = gasUrl.includes('?') ? `${gasUrl}&action=getKontenBantuan` : `${gasUrl}?action=getKontenBantuan`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && Array.isArray(result.konten)) {
+            localStorage.setItem('saleha_konten_bantuan_cache', JSON.stringify(result.konten));
+            return result.konten;
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal ambil konten bantuan dari Sheet, pakai cache:', err);
+      }
+    }
+
+    try {
+      const cached = localStorage.getItem('saleha_konten_bantuan_cache');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+
+    return [];
+  },
+
+  /**
+   * Ambil pengumuman aktif dari Google Sheets (Tab PENGUMUMAN)
+   */
+  async fetchPengumumanFromSheet() {
+    const gasUrl = this.getGasUrl();
+    if (gasUrl) {
+      try {
+        const url = gasUrl.includes('?') ? `${gasUrl}&action=getPengumuman` : `${gasUrl}?action=getPengumuman`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && Array.isArray(result.pengumuman)) {
+            localStorage.setItem('saleha_pengumuman_cache', JSON.stringify(result.pengumuman));
+            return result.pengumuman;
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal ambil pengumuman dari Sheet:', err);
+      }
+    }
+
+    try {
+      const cached = localStorage.getItem('saleha_pengumuman_cache');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+
+    return [];
+  },
+
+  /**
+   * Simpan pengumuman baru/update ke Google Sheets (Tab PENGUMUMAN)
+   */
+  async savePengumumanToSheet(pengumumanData) {
+    const gasUrl = this.getGasUrl();
+    if (!gasUrl) return { success: false, simulated: true };
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'savePengumuman',
+          data: pengumumanData
+        })
+      });
+      return await response.json();
+    } catch (error) {
+      console.warn('Gagal simpan pengumuman ke Sheets via GAS:', error);
+      return { success: false, error: error.message };
+    }
   }
 };

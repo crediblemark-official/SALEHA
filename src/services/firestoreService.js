@@ -128,5 +128,62 @@ export const firestoreService = {
     } catch (e) {
       console.warn('Inisialisasi Firestore awal dilewati:', e);
     }
+  },
+
+  /**
+   * Simpan atau perbarui pengumuman dari Admin ke Cloud Firestore
+   */
+  async savePengumuman(data) {
+    if (!data || !data.id) return { success: false, error: 'ID pengumuman wajib ada' };
+    try {
+      const docRef = doc(db, 'pengumuman', data.id);
+      await setDoc(docRef, {
+        ...data,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+      return { success: true };
+    } catch (error) {
+      console.error('Gagal menyimpan pengumuman ke Firestore:', error);
+      return { success: false, error };
+    }
+  },
+
+  /**
+   * Hapus pengumuman
+   */
+  async deletePengumuman(id) {
+    if (!id) return;
+    try {
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, 'pengumuman', id));
+      return { success: true };
+    } catch (error) {
+      console.error('Gagal hapus pengumuman:', error);
+      return { success: false, error };
+    }
+  },
+
+  /**
+   * Berlangganan real-time ke pengumuman aktif
+   */
+  subscribeToPengumuman(onUpdate) {
+    try {
+      const q = query(collection(db, 'pengumuman'), orderBy('tgl_rilis', 'desc'));
+      return onSnapshot(q, (snapshot) => {
+        const list = [];
+        snapshot.forEach((d) => {
+          const item = { id: d.id, ...d.data() };
+          if (item.status_aktif !== 'NONAKTIF' && item.status_aktif !== false) {
+            list.push(item);
+          }
+        });
+        onUpdate(list);
+      }, (err) => {
+        console.warn('Subscription pengumuman:', err);
+      });
+    } catch (e) {
+      console.warn('Error listener pengumuman:', e);
+      return () => {};
+    }
   }
 };

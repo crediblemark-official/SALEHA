@@ -213,6 +213,54 @@ const currentUmkmUser = ref(loadCurrentUser() || {
   nik: "3529012304850001"
 });
 
+// Default Pengumuman Awal
+const DEFAULT_PENGUMUMAN = [
+  {
+    id: "ann_001",
+    judul: "Sosialisasi & Fasilitasi Sertifikasi Halal Gratis (SEHATI 2026)",
+    isi: "LPNU PCNU Kabupaten Sumenep membuka pendampingan kuota Sertifikasi Halal Gratis bagi pelaku usaha kuliner dan olahan pangan se-Kabupaten Sumenep. Segera lengkapi data usaha Anda melalui aplikasi SALEHA.",
+    kategori: "PENTING",
+    tgl_rilis: "2026-09-25T08:00:00.000Z",
+    status_aktif: true,
+    penulis: "Pengurus Cabang LPNU Sumenep"
+  }
+];
+
+function loadCachedPengumuman() {
+  try {
+    const raw = localStorage.getItem('saleha_pengumuman_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return DEFAULT_PENGUMUMAN;
+}
+
+// State Reaktif Pengumuman & Konten Bantuan
+const pengumumanList = ref(loadCachedPengumuman());
+const kontenBantuanList = ref(gasService.getCachedKontenBantuan());
+const isKontenBantuanLoading = ref(false);
+
+// Berlangganan real-time pengumuman dari Firestore
+try {
+  firestoreService.subscribeToPengumuman((items) => {
+    if (Array.isArray(items) && items.length > 0) {
+      pengumumanList.value = items;
+      localStorage.setItem('saleha_pengumuman_cache', JSON.stringify(items));
+    }
+  });
+} catch (e) {
+  console.warn('Init firestore pengumuman listener warning:', e);
+}
+
+// Ambil konten bantuan dari Google Sheet (Tab KONTEN_BANTUAN) di background
+gasService.fetchKontenBantuanFromSheet().then((items) => {
+  if (Array.isArray(items) && items.length > 0) {
+    kontenBantuanList.value = items;
+  }
+}).catch(err => console.warn('Sync konten bantuan sheet warning:', err));
+
 // Admin Session
 const currentAdminUser = ref({
   id: "admin_lpnu_01",
@@ -600,6 +648,80 @@ export function useSalehaStore() {
     return { success: true };
   }
 
+  // Fungsi Pengumuman Admin
+  async function createPengumuman(data) {
+    const newPengumuman = {
+      id: data.id || `ann_${Date.now()}`,
+      judul: data.judul || '',
+      isi: data.isi || '',
+      kategori: data.kategori || 'INFO',
+      tgl_rilis: data.tgl_rilis || new Date().toISOString(),
+      status_aktif: data.status_aktif !== false,
+      penulis: data.penulis || currentAdminUser.value?.nama || 'Admin LPNU PCNU'
+    };
+
+    // 1. Simpan ke Firestore
+    const resFirestore = await firestoreService.savePengumuman(newPengumuman);
+
+    // 2. Simpan juga ke Google Sheet (Tab PENGUMUMAN) via GAS di background
+    gasService.savePengumumanToSheet(newPengumuman).catch(err => {
+      console.warn('Simpan pengumuman ke Google Sheet warning:', err);
+    });
+
+    // 3. Update state lokal segera
+    const existingIndex = pengumumanList.value.findIndex(p => p.id === newPengumuman.id);
+    if (existingIndex >= 0) {
+      pengumumanList.value[existingIndex] = newPengumuman;
+    } else {
+      pengumumanList.value.unshift(newPengumuman);
+    }
+    localStorage.setItem('saleha_pengumuman_cache', JSON.stringify(pengumumanList.value));
+
+    return resFirestore;
+  }
+
+  async function deletePengumuman(id) {
+    const res = await firestoreService.deletePengumuman(id);
+    pengumumanList.value = pengumumanList.value.filter(p => p.id !== id);
+    localStorage.setItem('saleha_pengumuman_cache', JSON.stringify(pengumumanList.value));
+    return res;
+  }
+
+  async function refreshPengumuman() {
+    try {
+      const items = await gasService.fetchPengumumanFromSheet();
+      if (Array.isArray(items) && items.length > 0) {
+        pengumumanList.value = items;
+      }
+    } catch (e) {
+      console.warn('Refresh pengumuman warning:', e);
+    }
+    return pengumumanList.value;
+  }
+
+  // Fungsi Konten Bantuan (Tab KONTEN_BANTUAN di Sheet)
+  async function refreshKontenBantuan() {
+    isKontenBantuanLoading.value = true;
+    try {
+      const items = await gasService.fetchKontenBantuanFromSheet();
+      if (Array.isArray(items) && items.length > 0) {
+        kontenBantuanList.value = items;
+      }
+    } catch (e) {
+      console.warn('Gagal refresh konten bantuan:', e);
+    } finally {
+      isKontenBantuanLoading.value = false;
+    }
+    return kontenBantuanList.value;
+  }
+
+  function getKontenBantuanItem(idKey) {
+    if (!idKey) return null;
+    const cleanKey = String(idKey).trim().toUpperCase();
+    const list = kontenBantuanList.value || [];
+    return list.find(item => (item.id_key || '').trim().toUpperCase() === cleanKey) || null;
+  }
+
   return {
     APP_VERSION,
     permohonanList,
@@ -623,6 +745,16 @@ export function useSalehaStore() {
     updateStatus,
     claimTicket,
     submitRevisi,
-    resetToDefaultData
+    resetToDefaultData,
+    // Pengumuman
+    pengumumanList,
+    createPengumuman,
+    deletePengumuman,
+    refreshPengumuman,
+    // Konten Bantuan Sheet
+    kontenBantuanList,
+    isKontenBantuanLoading,
+    refreshKontenBantuan,
+    getKontenBantuanItem
   };
 }
