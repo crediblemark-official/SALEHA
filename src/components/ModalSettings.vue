@@ -103,7 +103,7 @@
             <span class="text-slate-500">Firebase Firestore:</span>
             <span class="font-bold text-emerald-700">✓ salehalpnu (Aktif)</span>
           </div>
-          <div class="flex items-center justify-between">
+          <div v-if="store.currentAdminUser.value?.isLoggedIn && SPREADSHEET_MASTER_URL" class="flex items-center justify-between">
             <span class="text-slate-500">Google Spreadsheet:</span>
             <a
               :href="SPREADSHEET_MASTER_URL"
@@ -114,7 +114,7 @@
               <span>Buka Sheets ↗</span>
             </a>
           </div>
-          <div class="flex items-center justify-between">
+          <div v-if="store.currentAdminUser.value?.isLoggedIn && GDRIVE_MEDIA_FOLDER_URL" class="flex items-center justify-between">
             <span class="text-slate-500">Folder Media Drive:</span>
             <a
               :href="GDRIVE_MEDIA_FOLDER_URL"
