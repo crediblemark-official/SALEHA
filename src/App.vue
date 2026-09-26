@@ -99,15 +99,18 @@
           <button
             @click="umkmTab = 'pengajuan'"
             type="button"
-            class="flex flex-col items-center justify-center flex-1 py-0.5 transition-colors"
+            class="flex flex-col items-center justify-center flex-1 py-0.5 transition-colors group"
             :class="umkmTab === 'pengajuan' ? 'text-emerald-700 font-bold' : 'text-slate-400 hover:text-slate-600'"
           >
-            <div class="w-9 h-9 rounded-full bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center -mt-3 shadow-md border-2 border-white transition-all">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+            <div
+              class="w-10 h-10 rounded-full bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white flex items-center justify-center -mt-3.5 shadow-md border-2 border-white transition-all duration-200"
+              :class="umkmTab === 'pengajuan' ? 'ring-2 ring-emerald-600/30 bg-emerald-800 shadow-emerald-700/25' : ''"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
               </svg>
             </div>
-            <span class="text-[9px] mt-0.5">Ajukan</span>
+            <span class="text-[9px] mt-0.5" :class="umkmTab === 'pengajuan' ? 'font-bold text-emerald-800' : ''">Ajukan</span>
           </button>
 
           <!-- 4. Brankas Dokumen -->

@@ -177,7 +177,7 @@
     <div class="text-center pt-2 pb-6 space-y-0.5">
       <p class="text-[9.5px] text-slate-400 font-medium flex items-center justify-center gap-1.5 flex-wrap">
         <span>© 2026 SALEHA</span>
-        <VersionBadge @longpress="showAdminModal = true" badge-class="bg-slate-200/70 hover:bg-slate-300 text-slate-600 border border-slate-300" />
+        <VersionBadge @longpress="showAdminModal = true" />
         <span>· LPNU PCNU Kabupaten Sumenep</span>
       </p>
       <p class="text-[9.5px] text-slate-400">Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-800 hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-800 hover:underline">crediblemark.com</a></p>

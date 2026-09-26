@@ -1,21 +1,21 @@
 <template>
   <span
-    class="relative inline-flex items-center cursor-pointer select-none group"
+    class="relative inline-flex items-center cursor-pointer select-none"
     v-bind="longPressProps"
-    :title="'Versi ' + APP_VERSION + ' (Tahan 1 detik untuk Akses Administrator)'"
+    :title="'Versi ' + APP_VERSION"
   >
-    <!-- Visual Badge -->
+    <!-- Visual Text (Polos, tanpa border, tanpa box background) -->
     <span
-      class="font-mono text-[9px] px-1.5 py-0.5 rounded transition-all duration-200"
+      class="font-mono text-[9.5px] transition-colors duration-150"
       :class="[
         badgeClass,
-        isPressing ? 'scale-90 ring-2 ring-amber-400 bg-amber-500/20 text-amber-300 font-bold' : ''
+        isPressing ? 'scale-90 text-amber-500 font-bold' : ''
       ]"
     >
       {{ APP_VERSION }}
     </span>
 
-    <!-- Holding indicator tooltip -->
+    <!-- Holding indicator tooltip hanya saat ditekan lama -->
     <transition
       enter-active-class="transition duration-150 ease-out"
       enter-from-class="opacity-0 translate-y-1"
@@ -41,7 +41,7 @@ import { useLongPress } from '../composables/useLongPress';
 const props = defineProps({
   badgeClass: {
     type: String,
-    default: 'bg-white/10 hover:bg-white/20 text-slate-400 hover:text-slate-200'
+    default: 'text-slate-400 hover:text-slate-500'
   }
 });
 

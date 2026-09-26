@@ -13,7 +13,7 @@
             </span>
             <VersionBadge
               @longpress="showAdminModal = true"
-              badge-class="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60"
+              badge-class="text-emerald-200/80 hover:text-emerald-100"
             />
           </div>
           <span class="text-[10px] text-emerald-200/90 leading-tight mt-0.5 font-medium">
