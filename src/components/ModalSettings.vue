@@ -63,7 +63,7 @@
 
             <button
               type="button"
-              @click="handleLogout"
+              @click="requestLogout"
               :disabled="loadingAuth"
               class="w-full mt-2 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1"
             >
@@ -144,7 +144,7 @@
           </p>
 
           <button
-            @click="handleResetData"
+            @click="requestResetData"
             type="button"
             class="text-[10.5px] text-slate-400 hover:text-rose-600 font-medium flex items-center gap-1 transition-colors mx-auto"
           >
@@ -184,6 +184,32 @@
     @close="showAdminModal = false"
     @success="() => { showAdminModal = false; $emit('close'); }"
   />
+
+  <!-- Modal Konfirmasi Logout Akun Google Custom -->
+  <ModalConfirm
+    :is-open="showLogoutConfirm"
+    title="Keluar dari Akun Google?"
+    message="Apakah Anda yakin ingin keluar dari akun Google? Sesi Anda pada aplikasi SALEHA akan dinonaktifkan."
+    confirm-text="Ya, Keluar"
+    cancel-text="Batal"
+    variant="danger"
+    icon="logout"
+    @confirm="confirmLogout"
+    @cancel="showLogoutConfirm = false"
+  />
+
+  <!-- Modal Konfirmasi Reset Data Demo Custom -->
+  <ModalConfirm
+    :is-open="showResetConfirm"
+    title="Kembalikan Data Contoh Demo?"
+    message="Tindakan ini akan mengembalikan daftar permohonan ke 4 contoh UMKM Sumenep bawaan sistem."
+    confirm-text="Ya, Kembalikan Data"
+    cancel-text="Batal"
+    variant="warning"
+    icon="reset"
+    @confirm="confirmResetData"
+    @cancel="showResetConfirm = false"
+  />
 </template>
 
 <script setup>
@@ -194,6 +220,7 @@ import { useSalehaStore } from '../composables/useSalehaStore';
 import { GDRIVE_MEDIA_FOLDER_URL, SPREADSHEET_MASTER_URL } from '../config/appInfo';
 import VersionBadge from './VersionBadge.vue';
 import ModalAdminLogin from './ModalAdminLogin.vue';
+import ModalConfirm from './ModalConfirm.vue';
 
 defineProps({
   isOpen: Boolean
@@ -204,6 +231,8 @@ const emit = defineEmits(['close']);
 const store = useSalehaStore();
 const loadingAuth = ref(false);
 const showAdminModal = ref(false);
+const showLogoutConfirm = ref(false);
+const showResetConfirm = ref(false);
 const syncingFirestore = ref(false);
 const syncSuccessMessage = ref('');
 
@@ -218,20 +247,25 @@ async function handleLoginGoogle() {
   }
 }
 
-async function handleLogout() {
-  if (confirm('Apakah Anda yakin ingin keluar dari akun Google?')) {
-    loadingAuth.value = true;
-    await store.logout();
-    loadingAuth.value = false;
-  }
+function requestLogout() {
+  showLogoutConfirm.value = true;
 }
 
-function handleResetData() {
-  if (confirm('Kembalikan data permohonan ke 4 contoh UMKM Sumenep bawaan?')) {
-    store.resetToDefaultData();
-    alert('Data contoh telah dikembalikan.');
-    emit('close');
-  }
+async function confirmLogout() {
+  showLogoutConfirm.value = false;
+  loadingAuth.value = true;
+  await store.logout();
+  loadingAuth.value = false;
+}
+
+function requestResetData() {
+  showResetConfirm.value = true;
+}
+
+function confirmResetData() {
+  showResetConfirm.value = false;
+  store.resetToDefaultData();
+  syncSuccessMessage.value = '✓ Data contoh demo Sumenep telah dikembalikan.';
 }
 
 async function handleSyncAllToFirestore() {

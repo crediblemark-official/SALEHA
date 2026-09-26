@@ -223,6 +223,19 @@
       @close="showCredentialModal = false"
     />
 
+    <!-- Modal Konfirmasi Logout Admin Custom -->
+    <ModalConfirm
+      :is-open="showLogoutConfirm"
+      title="Keluar dari Portal Admin?"
+      message="Apakah Anda yakin ingin keluar dari Portal Administrator LPNU Sumenep?"
+      confirm-text="Ya, Keluar"
+      cancel-text="Batal"
+      variant="danger"
+      icon="logout"
+      @confirm="confirmLogoutAdmin"
+      @cancel="showLogoutConfirm = false"
+    />
+
   </div>
 </template>
 
@@ -233,6 +246,7 @@ import { useSalehaStore } from '../composables/useSalehaStore';
 import StatusBadge from './StatusBadge.vue';
 import ModalUpdateStatus from './ModalUpdateStatus.vue';
 import ModalKredensialEmail from './ModalKredensialEmail.vue';
+import ModalConfirm from './ModalConfirm.vue';
 
 const store = useSalehaStore();
 const searchQuery = ref('');
@@ -333,9 +347,14 @@ function exportToCsv() {
   document.body.removeChild(link);
 }
 
-async function handleLogoutAdmin() {
-  if (confirm('Keluar dari Portal Administrator LPNU?')) {
-    await store.logout();
-  }
+const showLogoutConfirm = ref(false);
+
+function handleLogoutAdmin() {
+  showLogoutConfirm.value = true;
+}
+
+async function confirmLogoutAdmin() {
+  showLogoutConfirm.value = false;
+  await store.logout();
 }
 </script>
