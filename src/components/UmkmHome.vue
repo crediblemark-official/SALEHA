@@ -173,6 +173,12 @@
 
     </div>
 
+    <!-- Copyright & Credits -->
+    <div class="text-center pt-2 pb-6 space-y-0.5">
+      <p class="text-[9.5px] text-slate-400 font-medium">© 2026 SALEHA · LPNU PCNU Kabupaten Sumenep</p>
+      <p class="text-[9.5px] text-slate-400">Dibuat dengan ❤️ oleh <span class="font-bold text-emerald-800">Rasyiqi</span></p>
+    </div>
+
   </div>
 </template>
 

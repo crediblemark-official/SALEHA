@@ -134,10 +134,16 @@
           </button>
         </div>
 
+        <!-- Copyright & Credit -->
+        <div class="text-center pt-2 text-[10px] text-slate-400 space-y-0.5">
+          <p>© 2026 SALEHA · LPNU PCNU Sumenep</p>
+          <p>Dibuat dengan ❤️ oleh <span class="font-bold text-emerald-800">Rasyiqi</span></p>
+        </div>
+
       </div>
 
       <!-- Footer Buttons -->
-      <div class="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-3">
+      <div class="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
         <button
           type="button"
           @click="$emit('close')"

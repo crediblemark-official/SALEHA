@@ -116,10 +116,15 @@
       </div>
 
       <!-- Footer Info -->
-      <p class="text-[9.5px] text-center text-slate-500 pt-1 leading-tight">
-        Lembaga Perekonomian Nahdlatul Ulama (LPNU)<br />
-        Pengurus Cabang Nahdlatul Ulama (PCNU) Kabupaten Sumenep
-      </p>
+      <div class="text-center pt-1 space-y-1">
+        <p class="text-[9.5px] text-slate-500 leading-tight">
+          Lembaga Perekonomian Nahdlatul Ulama (LPNU)<br />
+          Pengurus Cabang Nahdlatul Ulama (PCNU) Kabupaten Sumenep
+        </p>
+        <p class="text-[9.5px] text-slate-400 font-medium">
+          © 2026 SALEHA · Dibuat dengan ❤️ oleh <span class="text-emerald-400 font-semibold">Rasyiqi</span>
+        </p>
+      </div>
 
     </div>
 
