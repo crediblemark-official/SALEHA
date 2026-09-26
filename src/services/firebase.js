@@ -24,11 +24,8 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Scopes lengkap Google Identity
-googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
-googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-
-// Pastikan selalu meminta akun Google
+// Provider Google Auth (secara default sudah menyertakan openid, email, dan profile)
+// Hindari addScope manual URL userinfo yang dapat memicu konflik token 401
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
@@ -50,6 +47,8 @@ export function getAuthErrorMessage(error) {
       return 'Metode Google Sign-In belum diaktifkan di Firebase Console > Authentication > Sign-in method.';
     case 'auth/configuration-not-found':
       return 'Konfigurasi Google Identity OAuth belum lengkap di Google Cloud Console.';
+    case 'auth/invalid-credential':
+      return 'Kredensial OAuth Google ditolak (401). Ini terjadi jika konfigurasi Web Client ID/Secret di Firebase belum sinkron atau status OAuth Consent Screen masih dalam pengujian (Testing).';
     case 'auth/network-request-failed':
       return 'Koneksi internet bermasalah. Periksa jaringan Anda dan coba lagi.';
     default:
