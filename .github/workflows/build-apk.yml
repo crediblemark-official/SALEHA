@@ -67,6 +67,13 @@ jobs:
       - name: 🔄 Sinkronisasi Capacitor Android
         run: npx cap sync android
 
+      - name: 🔐 Siapkan debug.keystore resmi (SHA-1 Firebase)
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > android/app/debug.keystore
+          cp android/app/debug.keystore ~/.android/debug.keystore
+          echo "Debug keystore terverifikasi siap."
+
       - name: 🤖 Build Android APK (assembleDebug)
         run: |
           cd android

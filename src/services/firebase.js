@@ -53,8 +53,16 @@ export function getAuthErrorMessage(error) {
     case 'auth/invalid-credential':
       return 'Kredensial OAuth Google ditolak (401). Ini terjadi jika konfigurasi Web Client ID/Secret di Firebase belum sinkron atau status OAuth Consent Screen masih dalam pengujian (Testing).';
     case 'auth/network-request-failed':
+    case '7':
+    case 'NETWORK_ERROR':
       return 'Koneksi internet bermasalah. Periksa jaringan Anda dan coba lagi.';
+    case '10':
+    case 'DEVELOPER_ERROR':
+      return 'Developer Error (10): Sertifikat SHA-1 APK belum sesuai dengan SHA-1 di Firebase Console.';
     default:
+      if (typeof error.message === 'string' && (error.message.includes('10:') || error.message.includes('DEVELOPER_ERROR'))) {
+        return 'Developer Error (10): Sertifikat SHA-1 APK belum sesuai dengan SHA-1 di Firebase Console.';
+      }
       return error.message || 'Gagal login dengan akun Google.';
   }
 }
