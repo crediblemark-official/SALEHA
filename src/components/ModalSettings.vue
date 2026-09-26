@@ -97,20 +97,7 @@
           </div>
         </div>
 
-        <!-- SECTION 2: GAS URL -->
-        <div class="space-y-1">
-          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Endpoint Google Apps Script (Web App URL)
-          </label>
-          <input
-            v-model="gasUrlInput"
-            type="url"
-            placeholder="https://script.google.com/macros/s/.../exec"
-            class="w-full text-[11px] font-mono p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-600 focus:outline-hidden"
-          />
-        </div>
-
-        <!-- SECTION 3: SYSTEM INFO -->
+        <!-- SECTION 2: SYSTEM INFO -->
         <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[10px] space-y-1">
           <div class="flex items-center justify-between">
             <span class="text-slate-500">Firebase Firestore:</span>
@@ -172,20 +159,13 @@
       </div>
 
       <!-- Footer Buttons -->
-      <div class="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
+      <div class="mt-3 border-t border-slate-100 pt-3">
         <button
           type="button"
           @click="$emit('close')"
-          class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          class="w-full py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-98 rounded-lg transition-all text-center"
         >
-          Tutup
-        </button>
-        <button
-          type="button"
-          @click="saveSettings"
-          class="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:scale-95 rounded-lg shadow-2xs transition-all"
-        >
-          Simpan
+          Tutup Pengaturan
         </button>
       </div>
 
@@ -201,7 +181,6 @@
 
 <script setup>
 import { ref } from 'vue';
-import { gasService } from '../services/gasService';
 import { firestoreService } from '../services/firestoreService';
 import { useSalehaStore } from '../composables/useSalehaStore';
 import { GDRIVE_MEDIA_FOLDER_URL } from '../config/appInfo';
@@ -212,10 +191,9 @@ defineProps({
   isOpen: Boolean
 });
 
-const emit = defineEmits(['close', 'saved']);
+const emit = defineEmits(['close']);
 
 const store = useSalehaStore();
-const gasUrlInput = ref(gasService.getGasUrl());
 const loadingAuth = ref(false);
 const showAdminModal = ref(false);
 const syncingFirestore = ref(false);
@@ -238,12 +216,6 @@ async function handleLogout() {
     await store.logout();
     loadingAuth.value = false;
   }
-}
-
-function saveSettings() {
-  gasService.setGasUrl(gasUrlInput.value);
-  emit('saved');
-  emit('close');
 }
 
 function handleResetData() {

@@ -3,19 +3,9 @@
  * Mengupload berkas Base64 ke Google Drive dan sync data ke Google Sheets
  */
 
-const GAS_URL_KEY = 'saleha_gas_webapp_url';
-
 export const gasService = {
   getGasUrl() {
-    return localStorage.getItem(GAS_URL_KEY) || import.meta.env.VITE_GAS_URL || '';
-  },
-
-  setGasUrl(url) {
-    if (url) {
-      localStorage.setItem(GAS_URL_KEY, url.trim());
-    } else {
-      localStorage.removeItem(GAS_URL_KEY);
-    }
+    return (import.meta.env.VITE_GAS_URL || '').trim();
   },
 
   /**
