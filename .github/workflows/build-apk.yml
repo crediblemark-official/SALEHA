@@ -1,0 +1,117 @@
+name: 📱 Build & Rilis Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag versi rilis (contoh: v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: 🤖 Build APK & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: ☕ Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔧 Buat file .env dari GitHub Secrets
+        run: |
+          cat > .env << EOF
+          VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_GAS_URL=${{ secrets.VITE_GAS_URL }}
+          EOF
+
+      - name: 🏗️ Build Web SPA
+        run: npm run build
+
+      - name: 🔑 Siapkan google-services.json untuk Android
+        run: |
+          mkdir -p android/app
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+
+      - name: 🔄 Sinkronisasi Capacitor Android
+        run: npx cap sync android
+
+      - name: 🤖 Build Android APK (assembleDebug)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: 🏷️ Siapkan File APK Rilis
+        id: prepare_apk
+        run: |
+          VERSION_TAG="${{ github.event.inputs.release_tag || github.ref_name }}"
+          if [[ -z "$VERSION_TAG" || "$VERSION_TAG" == "main" ]]; then
+            VERSION_TAG="v1.0.0"
+          fi
+          APK_NAME="SALEHA-${VERSION_TAG}.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "./${APK_NAME}"
+          echo "apk_name=${APK_NAME}" >> $GITHUB_OUTPUT
+          echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+
+      - name: 📤 Simpan Artifact APK di GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare_apk.outputs.apk_name }}
+          path: ${{ steps.prepare_apk.outputs.apk_name }}
+
+      - name: 🚀 Buat GitHub Release Resmi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.prepare_apk.outputs.version_tag }}"
+          APK_FILE="${{ steps.prepare_apk.outputs.apk_name }}"
+          
+          # Bersihkan tag lokal/remote lama jika ada
+          gh release delete "$TAG" -y 2>/dev/null || true
+          
+          gh release create "$TAG" "$APK_FILE" \
+            --title "SALEHA ${TAG} - Rilis Android Resmi" \
+            --notes "### 🚀 Rilis Aplikasi Android SALEHA (Sadar Legalitas Usaha)
+          
+          Layanan pendampingan NIB, Sertifikasi Halal SEHATI, dan P-IRT untuk pelaku UMKM Nahdliyin se-Kabupaten Sumenep oleh **LPNU PCNU Kabupaten Sumenep**.
+          
+          #### 📱 Fitur & Keunggulan:
+          - **Google Sign-In Native**: Login satu ketukan aman menggunakan Google Play Services bawaan HP Android.
+          - **Pendampingan NIB OSS-RBA**: Pengajuan legalitas usaha mudah dibantu operator LPNU MWC se-Sumenep.
+          - **Brankas Legalitas**: Unduh dan simpan dokumen NIB dan sertifikat kapan saja.
+          - **Real-time Tracking**: Pantau status antrean pengurusan usaha secara langsung.
+          
+          #### 📥 Panduan Instalasi:
+          1. Unduh file **\`${APK_FILE}\`** di bawah.
+          2. Buka file APK di smartphone Android Anda.
+          3. Jika muncul notifikasi keamanan instalasi file eksternal, klik **\"Tetap Instal / Install Anyway\"**.
+          4. Buka aplikasi SALEHA dan masuk dengan akun Google Anda."
