@@ -5,7 +5,8 @@
  * 
  * Fungsi:
  * 1. Menerima upload Base64 Foto KTP, Produk, dan PDF Legalitas ke Google Drive
- * 2. Sinkronisasi data permohonan ke Google Sheets Master: DATABASE_MASTER_SALEHA_PCNU
+ * 2. Sinkronisasi data permohonan ke Google Sheets Master: SALEHA
+ * 3. Mengelola daftar hak akses Admin dinamis via Tab ADMIN_USERS
  * =========================================================================
  */
 
@@ -16,24 +17,37 @@ const CONFIG = {
   FOLDER_KTP_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
   FOLDER_PRODUK_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
   FOLDER_PDF_ID: "1Uf9PEOhs8dTqLBn2x8FkNDSoGiKmbVJk",
-  SPREADSHEET_ID: "GANTI_DENGAN_ID_SPREADSHEET_MASTER_SALEHA",
+  SPREADSHEET_ID: "14HAizow9Itv-9V7KClg1HoPsl7hhjkg2qvPETRrjqIw",
   SHEET_NAME_MASTER: "MASTER_DATA",
   SHEET_NAME_REKAP: "REKAP_KECAMATAN",
   SHEET_NAME_ADMINS: "ADMIN_USERS"
 };
 
+/**
+ * Endpoint GET (Digunakan untuk cek status, ambil admin, atau inisialisasi sheet)
+ */
 function doGet(e) {
   const action = e && e.parameter ? e.parameter.action : null;
+  
   if (action === "getAdmins") {
     return handleGetAdmins();
   }
-  return ContentService.createTextOutput(JSON.stringify({
+  
+  if (action === "initDatabase" || action === "setup") {
+    return responseJson(initDatabase());
+  }
+
+  return responseJson({
     status: "online",
     service: "SALEHA LPNU Sumenep API Gateway",
+    spreadsheetId: CONFIG.SPREADSHEET_ID,
     timestamp: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
+  });
 }
 
+/**
+ * Endpoint POST (Digunakan untuk upload berkas atau sinkronisasi data dari Web/Android)
+ */
 function doPost(e) {
   try {
     const rawData = e.postData ? e.postData.contents : null;
@@ -50,11 +64,142 @@ function doPost(e) {
       return handleSyncSheet(payload);
     } else if (action === "getAdmins") {
       return handleGetAdmins();
+    } else if (action === "initDatabase" || action === "setup") {
+      return responseJson(initDatabase());
     } else {
       return responseJson({ success: false, error: "Unknown action: " + action });
     }
   } catch (err) {
     return responseJson({ success: false, error: err.toString() });
+  }
+}
+
+/**
+ * Mendapatkan objek Spreadsheet SALEHA secara handal
+ */
+function getSalehaSpreadsheet() {
+  if (CONFIG.SPREADSHEET_ID && !CONFIG.SPREADSHEET_ID.startsWith("GANTI_")) {
+    try {
+      return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    } catch (e) {
+      console.warn("Gagal openById:", e);
+    }
+  }
+
+  // Jika script container-bound pada spreadsheet
+  try {
+    const active = SpreadsheetApp.getActiveSpreadsheet();
+    if (active) return active;
+  } catch (e) {}
+
+  // Fallback: cari file dengan nama SALEHA
+  const files = DriveApp.getFilesByName("SALEHA");
+  if (files.hasNext()) {
+    return SpreadsheetApp.open(files.next());
+  }
+
+  const legacyFiles = DriveApp.getFilesByName("DATABASE_MASTER_SALEHA_PCNU");
+  if (legacyFiles.hasNext()) {
+    return SpreadsheetApp.open(legacyFiles.next());
+  }
+
+  const newSs = SpreadsheetApp.create("SALEHA");
+  initDatabase(newSs);
+  return newSs;
+}
+
+/**
+ * Inisialisasi Tab dan Header pada Google Sheets SALEHA
+ * Bisa dijalankan langsung dari editor Apps Script atau via GET ?action=initDatabase
+ */
+function initDatabase(targetSs) {
+  const ss = targetSs || getSalehaSpreadsheet();
+  
+  // 1. Inisialisasi Sheet Master Data
+  let masterSheet = ss.getSheetByName(CONFIG.SHEET_NAME_MASTER);
+  if (!masterSheet) {
+    // Jika ada 'Sheet1' bawaan yang masih kosong, ubah namanya jadi MASTER_DATA
+    const sheet1 = ss.getSheetByName("Sheet1") || ss.getSheetByName("Sheet 1");
+    if (sheet1) {
+      masterSheet = sheet1;
+      masterSheet.setName(CONFIG.SHEET_NAME_MASTER);
+    } else {
+      masterSheet = ss.insertSheet(CONFIG.SHEET_NAME_MASTER);
+    }
+  }
+  setupSheetHeaders(masterSheet);
+
+  // 2. Inisialisasi Sheet Admin Users
+  let adminSheet = ss.getSheetByName(CONFIG.SHEET_NAME_ADMINS);
+  if (!adminSheet) {
+    adminSheet = ss.insertSheet(CONFIG.SHEET_NAME_ADMINS);
+  }
+  setupAdminSheetHeaders(adminSheet);
+
+  return {
+    success: true,
+    message: "Inisialisasi Database SALEHA Berhasil! Tab MASTER_DATA dan ADMIN_USERS telah siap.",
+    spreadsheetUrl: ss.getUrl()
+  };
+}
+
+/**
+ * Format Header Tab MASTER_DATA
+ */
+function setupSheetHeaders(sheet) {
+  const headers = [
+    "ID_Tiket",
+    "Waktu_Pengajuan",
+    "No_WhatsApp",
+    "Email_OSS",
+    "Nama_Pemilik",
+    "NIK",
+    "Nama_Usaha",
+    "Kecamatan",
+    "Jenis_Izin",
+    "Link_KTP_Drive",
+    "Link_Produk_Drive",
+    "Status_Proses",
+    "Catatan_LPNU",
+    "Link_PDF_Hasil",
+    "Operator_LPNU"
+  ];
+
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length)
+    .setFontWeight("bold")
+    .setBackground("#057a55")
+    .setFontColor("#ffffff")
+    .setHorizontalAlignment("center");
+  
+  try {
+    sheet.setFrozenRows(1);
+  } catch (e) {}
+}
+
+/**
+ * Format Header Tab ADMIN_USERS dan contoh isi
+ */
+function setupAdminSheetHeaders(sheet) {
+  const headers = ["Email", "Nama_Operator", "Role", "Status_Aktif"];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length)
+    .setFontWeight("bold")
+    .setBackground("#057a55")
+    .setFontColor("#ffffff")
+    .setHorizontalAlignment("center");
+
+  try {
+    sheet.setFrozenRows(1);
+  } catch (e) {}
+
+  // Tambahkan admin bawaan jika masih kosong
+  if (sheet.getLastRow() <= 1) {
+    const defaultAdmins = [
+      ["rasy.ibnzawawi@gmail.com", "Rasyiqi", "Super Admin", "AKTIF"],
+      ["admin@lpnu-sumenep.or.id", "Tim Operator LPNU", "Admin", "AKTIF"]
+    ];
+    sheet.getRange(2, 1, defaultAdmins.length, headers.length).setValues(defaultAdmins);
   }
 }
 
@@ -118,24 +263,11 @@ function handleSyncSheet(payload) {
     return responseJson({ success: false, error: "data and id_ticket required" });
   }
 
-  let ss;
-  try {
-    ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  } catch (e) {
-    // Fallback: buka atau buat spreadsheet baru
-    const files = DriveApp.getFilesByName("DATABASE_MASTER_SALEHA_PCNU");
-    if (files.hasNext()) {
-      ss = SpreadsheetApp.open(files.next());
-    } else {
-      ss = SpreadsheetApp.create("DATABASE_MASTER_SALEHA_PCNU");
-      setupSheetHeaders(ss);
-    }
-  }
-
+  const ss = getSalehaSpreadsheet();
   let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_MASTER);
   if (!sheet) {
-    sheet = ss.insertSheet(CONFIG.SHEET_NAME_MASTER);
-    setupSheetHeaders(ss);
+    initDatabase(ss);
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME_MASTER);
   }
 
   const dataRange = sheet.getDataRange();
@@ -181,52 +313,15 @@ function handleSyncSheet(payload) {
   });
 }
 
-function setupSheetHeaders(ss) {
-  let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_MASTER);
-  if (!sheet) {
-    sheet = ss.getSheets()[0];
-    sheet.setName(CONFIG.SHEET_NAME_MASTER);
-  }
-
-  const headers = [
-    "ID_Tiket",
-    "Waktu_Pengajuan",
-    "No_WhatsApp",
-    "Email_OSS",
-    "Nama_Pemilik",
-    "NIK",
-    "Nama_Usaha",
-    "Kecamatan",
-    "Jenis_Izin",
-    "Link_KTP_Drive",
-    "Link_Produk_Drive",
-    "Status_Proses",
-    "Catatan_LPNU",
-    "Link_PDF_Hasil",
-    "Operator_LPNU"
-  ];
-
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#057a55").setFontColor("#ffffff");
-}
-
+/**
+ * Handle Pengambilan Admin Aktif dari Tab ADMIN_USERS
+ */
 function handleGetAdmins() {
-  let ss;
-  try {
-    ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  } catch (e) {
-    const files = DriveApp.getFilesByName("DATABASE_MASTER_SALEHA_PCNU");
-    if (files.hasNext()) {
-      ss = SpreadsheetApp.open(files.next());
-    } else {
-      ss = SpreadsheetApp.create("DATABASE_MASTER_SALEHA_PCNU");
-    }
-  }
-
+  const ss = getSalehaSpreadsheet();
   let sheet = ss.getSheetByName(CONFIG.SHEET_NAME_ADMINS);
   if (!sheet) {
-    sheet = ss.insertSheet(CONFIG.SHEET_NAME_ADMINS);
-    setupAdminSheetHeaders(sheet);
+    initDatabase(ss);
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME_ADMINS);
   }
 
   const data = sheet.getDataRange().getValues();
@@ -249,19 +344,6 @@ function handleGetAdmins() {
     success: true,
     admins: admins
   });
-}
-
-function setupAdminSheetHeaders(sheet) {
-  const headers = ["Email", "Nama_Operator", "Role", "Status_Aktif"];
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#057a55").setFontColor("#ffffff");
-
-  // Contoh data awal (dapat diubah/ditambah langsung di Google Sheets kapan saja)
-  const defaultAdmins = [
-    ["rasy.ibnzawawi@gmail.com", "Rasyiqi", "Super Admin", "AKTIF"],
-    ["admin@lpnu-sumenep.or.id", "Tim Operator LPNU", "Admin", "AKTIF"]
-  ];
-  sheet.getRange(2, 1, defaultAdmins.length, headers.length).setValues(defaultAdmins);
 }
 
 function responseJson(obj) {

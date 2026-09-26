@@ -104,8 +104,15 @@
             <span class="font-bold text-emerald-700">✓ salehalpnu (Aktif)</span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-slate-500">GAS Google Drive:</span>
-            <span class="font-bold text-emerald-700">✓ Terkoneksi</span>
+            <span class="text-slate-500">Google Spreadsheet:</span>
+            <a
+              :href="SPREADSHEET_MASTER_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-bold text-emerald-700 hover:underline inline-flex items-center gap-0.5"
+            >
+              <span>Buka Sheets ↗</span>
+            </a>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-slate-500">Folder Media Drive:</span>
@@ -120,9 +127,9 @@
           </div>
         </div>
 
-        <!-- Reset Demo Data & Sync Firestore -->
+        <!-- Reset Demo Data & Sync Firestore & Sheets -->
         <div class="pt-1 space-y-2">
-          <!-- Button Sync to Cloud Firestore -->
+          <!-- Button Sync to Cloud Firestore & Google Sheets -->
           <button
             @click="handleSyncAllToFirestore"
             :disabled="syncingFirestore"
@@ -130,7 +137,7 @@
             class="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 active:scale-98 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
           >
             <span v-if="syncingFirestore" class="w-3.5 h-3.5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin"></span>
-            <span v-else>☁️ Unggah &amp; Sinkronkan Data ke Firestore</span>
+            <span v-else>☁️ Unggah &amp; Sinkronkan Data ke Firestore &amp; Sheets</span>
           </button>
           <p v-if="syncSuccessMessage" class="text-[10px] text-emerald-700 font-semibold text-center animate-in fade-in">
             {{ syncSuccessMessage }}
@@ -182,8 +189,9 @@
 <script setup>
 import { ref } from 'vue';
 import { firestoreService } from '../services/firestoreService';
+import { gasService } from '../services/gasService';
 import { useSalehaStore } from '../composables/useSalehaStore';
-import { GDRIVE_MEDIA_FOLDER_URL } from '../config/appInfo';
+import { GDRIVE_MEDIA_FOLDER_URL, SPREADSHEET_MASTER_URL } from '../config/appInfo';
 import VersionBadge from './VersionBadge.vue';
 import ModalAdminLogin from './ModalAdminLogin.vue';
 
@@ -228,7 +236,7 @@ function handleResetData() {
 
 async function handleSyncAllToFirestore() {
   if (!store.firebaseUser.value) {
-    alert('Harap login terlebih dahulu untuk sinkronisasi ke Cloud Firestore.');
+    alert('Harap login terlebih dahulu untuk sinkronisasi ke Cloud Firestore & Google Sheets.');
     return;
   }
   syncingFirestore.value = true;
@@ -237,11 +245,12 @@ async function handleSyncAllToFirestore() {
     let count = 0;
     for (const item of store.permohonanList.value) {
       await firestoreService.savePermohonan(item);
+      await gasService.syncToGoogleSheet(item);
       count++;
     }
-    syncSuccessMessage.value = `✓ Berhasil mengunggah ${count} data tiket ke Cloud Firestore!`;
+    syncSuccessMessage.value = `✓ Berhasil mengunggah ${count} data tiket ke Cloud Firestore & Google Sheets!`;
   } catch (err) {
-    alert('Gagal sinkronkan ke Firestore: ' + (err.message || err));
+    alert('Gagal sinkronkan: ' + (err.message || err));
   } finally {
     syncingFirestore.value = false;
   }
