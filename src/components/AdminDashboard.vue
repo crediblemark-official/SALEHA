@@ -2,27 +2,28 @@
   <div class="pb-6 bg-slate-50">
     
     <!-- Top Compact Header (Directly connected, no gap) -->
-    <div class="bg-emerald-950 text-white px-3.5 py-3 flex items-center justify-between border-b border-emerald-900">
-      <div>
+    <div class="bg-emerald-950 text-white px-3.5 py-2.5 flex items-center justify-between border-b border-emerald-900 gap-2">
+      <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5 leading-none">
-          <span class="text-sm font-black tracking-tight text-white">Back-Office LPNU</span>
-          <span class="text-[9px] bg-amber-400 text-emerald-950 font-bold px-1 rounded">ADMIN</span>
+          <span class="text-xs sm:text-sm font-black tracking-tight text-white truncate">Back-Office LPNU</span>
+          <span class="text-[8.5px] bg-amber-400 text-emerald-950 font-black px-1 py-0.5 rounded shrink-0">ADMIN</span>
         </div>
-        <p class="text-[10px] text-emerald-300 mt-1 leading-none">
-          Operator: {{ store.currentAdminUser.value.nama }}
+        <p class="text-[10px] text-emerald-300 mt-1 leading-none truncate">
+          {{ store.currentAdminUser.value.nama }}
         </p>
       </div>
 
-      <div class="flex items-center gap-1.5">
+      <div class="flex items-center gap-1.5 shrink-0">
         <!-- Pengumuman Broadcast Button -->
         <button
           @click="showPengumumanModal = true"
           type="button"
           title="Kelola & Buat Pengumuman"
-          class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all shadow-xs"
+          class="h-7 px-2.5 bg-emerald-900 hover:bg-emerald-800 active:scale-95 text-emerald-100 hover:text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 border border-emerald-700/80 transition-all shadow-2xs"
         >
-          <span>📢</span>
-          <span>Pengumuman</span>
+          <span class="text-xs">📢</span>
+          <span class="hidden sm:inline">Pengumuman</span>
+          <span class="sm:hidden">Info</span>
         </button>
 
         <!-- Export CSV Button -->
@@ -30,9 +31,9 @@
           @click="exportToCsv"
           type="button"
           title="Export Sheet CSV"
-          class="px-2.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 border border-emerald-700 transition-all"
+          class="h-7 px-2.5 bg-emerald-900 hover:bg-emerald-800 active:scale-95 text-emerald-100 hover:text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 border border-emerald-700/80 transition-all shadow-2xs"
         >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
           <span>Export</span>
@@ -43,8 +44,11 @@
           @click="handleLogoutAdmin"
           type="button"
           title="Keluar dari Portal Admin"
-          class="px-2 py-1.5 bg-rose-900/60 hover:bg-rose-800 active:scale-95 text-rose-200 hover:text-white rounded-lg text-[11px] font-bold flex items-center gap-1 border border-rose-700/60 transition-all"
+          class="h-7 px-2 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-200 hover:text-white rounded-lg text-[10px] font-bold flex items-center gap-1 border border-rose-800/60 transition-all"
         >
+          <svg class="w-3 h-3 text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+          </svg>
           <span>Keluar</span>
         </button>
       </div>
