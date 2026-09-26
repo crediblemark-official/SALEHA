@@ -15,22 +15,7 @@
       {{ APP_VERSION }}
     </span>
 
-    <!-- Holding indicator tooltip hanya saat ditekan lama -->
-    <transition
-      enter-active-class="transition duration-150 ease-out"
-      enter-from-class="opacity-0 translate-y-1"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition duration-100 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 translate-y-1"
-    >
-      <span
-        v-if="isPressing"
-        class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-amber-400 text-slate-950 font-bold text-[9px] px-2 py-0.5 rounded-full shadow-lg pointer-events-none z-50 animate-pulse"
-      >
-        Tahan untuk Admin 🛡️
-      </span>
-    </transition>
+
   </span>
 </template>
 
@@ -49,5 +34,5 @@ const emit = defineEmits(['longpress']);
 
 const { isPressing, longPressProps } = useLongPress(() => {
   emit('longpress');
-}, 800);
+}, 5000);
 </script>

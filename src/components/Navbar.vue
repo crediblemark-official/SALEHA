@@ -27,12 +27,14 @@
         
         <!-- Admin Indicator Badge (Hanya tampil jika Admin resmi yang login) -->
         <div
-          v-if="store.activeRole.value === 'admin' && store.isAdminUser.value"
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400 text-emerald-950 text-[10px] font-black tracking-wide shadow-xs border border-amber-300"
+          v-if="store.activeRole.value === 'admin'"
+          title="Admin Operator"
+          class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-emerald-950 shadow-xs border border-amber-300"
         >
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-950 animate-pulse"></span>
-          <span>ADMIN OPERATOR</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-950 animate-pulse"></span>
         </div>
+
+
 
         <!-- Settings / User Avatar Button -->
         <button

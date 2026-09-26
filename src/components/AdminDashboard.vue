@@ -18,11 +18,10 @@
           @click="showPengumumanModal = true"
           type="button"
           title="Kelola & Buat Pengumuman"
-          class="h-7 px-2.5 bg-emerald-900 hover:bg-emerald-800 active:scale-95 text-emerald-100 hover:text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1 border border-emerald-700/80 transition-all shadow-2xs"
+          class="h-7 px-2.5 bg-emerald-900 hover:bg-emerald-800 active:scale-95 text-emerald-100 hover:text-white rounded-lg text-[10.5px] font-bold flex items-center gap-1.5 border border-emerald-700/80 transition-all shadow-2xs"
         >
           <span class="text-xs">📢</span>
-          <span class="hidden sm:inline">Pengumuman</span>
-          <span class="sm:hidden">Info</span>
+          <span>Pengumuman</span>
         </button>
 
         <!-- Export CSV Button -->
@@ -36,19 +35,6 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
           <span>Export</span>
-        </button>
-
-        <!-- Logout Admin Button -->
-        <button
-          @click="handleLogoutAdmin"
-          type="button"
-          title="Keluar dari Portal Admin"
-          class="h-7 px-2 bg-rose-950/60 hover:bg-rose-900 active:scale-95 text-rose-200 hover:text-white rounded-lg text-[10px] font-bold flex items-center gap-1 border border-rose-800/60 transition-all"
-        >
-          <svg class="w-3 h-3 text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-          </svg>
-          <span>Keluar</span>
         </button>
       </div>
     </div>
@@ -122,105 +108,141 @@
 
     </div>
 
-    <!-- Antrean List (Directly touching filter bar, divide-y) -->
-    <div class="bg-white border-b border-slate-200 divide-y divide-slate-100">
+    <!-- Antrean Table (Responsive horizontal scrollable table) -->
+    <div class="bg-white border-b border-slate-200 overflow-x-auto">
       
-      <div v-if="filteredTickets.length === 0" class="p-6 text-center text-xs text-slate-400">
-        Tidak ada data permohonan.
+      <div v-if="filteredTickets.length === 0" class="p-8 text-center text-xs text-slate-400">
+        Tidak ada data permohonan yang sesuai filter.
       </div>
 
-      <div
-        v-for="ticket in filteredTickets"
-        :key="ticket.id_ticket"
-        class="p-3 space-y-2 hover:bg-slate-50 transition-colors"
+      <table v-else class="w-full text-left border-collapse" style="min-width: 960px">
+        <thead>
+          <tr class="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider whitespace-nowrap">
+            <th class="py-1 px-2">#</th>
+            <th class="py-1 px-2">ID Tiket</th>
+            <th class="py-1 px-2">Nama Usaha</th>
+            <th class="py-1 px-2">Kecamatan</th>
+            <th class="py-1 px-2">Nama Pemilik</th>
+            <th class="py-1 px-2">No. WA</th>
+            <th class="py-1 px-2">Akun OSS</th>
+            <th class="py-1 px-2">Status</th>
+            <th class="py-1 px-2">Petugas</th>
+            <th class="py-1 px-2 text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-xs">
+          <tr
+            v-for="(ticket, idx) in filteredTickets"
+            :key="ticket.id_ticket"
+            class="hover:bg-emerald-50/20 transition-colors whitespace-nowrap"
+          >
+            <!-- No urut -->
+            <td class="py-1 px-2 text-slate-400 text-[10px]">{{ idx + 1 }}</td>
+
+            <!-- ID Tiket -->
+            <td class="py-1 px-2">
+              <span class="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                {{ ticket.id_ticket }}
+              </span>
+            </td>
+
+            <!-- Nama Usaha -->
+            <td class="py-1 px-2 font-bold text-slate-900 max-w-[160px]">
+              <span class="block truncate" :title="ticket.nama_usaha">{{ ticket.nama_usaha }}</span>
+            </td>
+
+            <!-- Kecamatan -->
+            <td class="py-1 px-2 text-slate-600">
+              {{ ticket.alamat_usaha?.kecamatan || '-' }}
+            </td>
+
+            <!-- Nama Pemilik -->
+            <td class="py-1 px-2 text-slate-700 font-medium max-w-[130px]">
+              <span class="block truncate" :title="ticket.nama_pemilik">{{ ticket.nama_pemilik }}</span>
+            </td>
+
+            <!-- No WA -->
+            <td class="py-1 px-2">
+              <a
+                v-if="ticket.no_wa"
+                :href="'https://wa.me/62' + cleanPhone(ticket.no_wa)"
+                target="_blank"
+                class="text-emerald-700 font-semibold hover:underline"
+              >0{{ cleanPhone(ticket.no_wa) }} ↗</a>
+              <span v-else class="text-slate-400">-</span>
+            </td>
+
+            <!-- Akun OSS / Email -->
+            <td class="py-1 px-2">
+              <button
+                v-if="ticket.email"
+                @click.stop="openCredentialModal(ticket)"
+                type="button"
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-800 border border-blue-200 rounded text-[9.5px] font-bold transition-all max-w-[150px]"
+              >
+                <span>🔑</span>
+                <span class="truncate font-mono">{{ ticket.email }}</span>
+                <span v-if="ticket.punya_2fa" class="bg-rose-500 text-white text-[7px] font-extrabold px-1 rounded-full shrink-0">2FA</span>
+                <span v-else-if="ticket.email === 'Dibuatkan oleh Tim LPNU'" class="bg-amber-100 text-amber-800 text-[7px] px-1 rounded shrink-0">Buatkan</span>
+              </button>
+              <span v-else class="text-slate-400 italic">-</span>
+            </td>
+
+            <!-- Status -->
+            <td class="py-1 px-2">
+              <StatusBadge :status="ticket.status" />
+            </td>
+
+            <!-- Petugas -->
+            <td class="py-1 px-2 max-w-[120px]">
+              <span v-if="ticket.operator_assigned" class="text-[10.5px] text-slate-700 block truncate" :title="ticket.operator_assigned">
+                {{ ticket.operator_assigned.split(',')[0] }}
+              </span>
+              <span v-else class="text-[10px] text-amber-600 font-semibold italic">Belum diklaim</span>
+            </td>
+
+            <!-- Aksi -->
+            <td class="py-1 px-2 text-right">
+              <div class="inline-flex items-center gap-1">
+                <a
+                  v-if="ticket.foto_ktp_url"
+                  :href="ticket.foto_ktp_url"
+                  target="_blank"
+                  class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[10px] border border-slate-200 transition-colors"
+                >KTP ↗</a>
+                <button
+                  v-if="!ticket.operator_assigned"
+                  @click="store.claimTicket(ticket.id_ticket, store.currentAdminUser.value.nama)"
+                  type="button"
+                  class="px-2 py-1 bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 font-bold rounded-lg text-[10px] border border-amber-200 transition-all"
+                >Klaim</button>
+                <button
+                  @click="openExecuteModal(ticket)"
+                  type="button"
+                  class="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold rounded-lg text-[10px] transition-all"
+                >Proses</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+
+
+    <!-- Bottom Footer Logout Button -->
+    <div class="p-4 text-center">
+      <button
+        @click="handleLogoutAdmin"
+        type="button"
+        class="text-xs font-bold text-rose-700 hover:text-rose-800 hover:underline inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg hover:bg-rose-50 transition-colors"
       >
-        <!-- Row 1: ID, Kecamatan, Operator, Status -->
-        <div class="flex items-center justify-between text-xs">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <span class="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded shrink-0">
-              {{ ticket.id_ticket }}
-            </span>
-            <span class="text-[10px] text-slate-500 font-medium truncate max-w-[100px]">
-              {{ ticket.alamat_usaha?.kecamatan }}
-            </span>
-            <span
-              v-if="ticket.operator_assigned"
-              class="text-[9px] text-emerald-800 bg-emerald-50 border border-emerald-100 px-1 py-0.2 rounded font-medium truncate max-w-[90px]"
-              :title="'Operator: ' + ticket.operator_assigned"
-            >
-              👤 {{ ticket.operator_assigned.split(',')[0].replace('H. M. ', '') }}
-            </span>
-          </div>
-          <StatusBadge :status="ticket.status" />
-        </div>
-
-        <!-- Row 2: Nama Usaha & Pemilik -->
-        <div>
-          <h4 class="text-xs font-extrabold text-slate-900 leading-tight truncate">
-            {{ ticket.nama_usaha }}
-          </h4>
-          <p class="text-[11px] text-slate-500 truncate mt-0.5">
-            {{ ticket.nama_pemilik }} • <a :href="'https://wa.me/62' + cleanPhone(ticket.no_wa)" target="_blank" class="text-emerald-700 font-semibold hover:underline">WA: 0{{ cleanPhone(ticket.no_wa) }} ↗</a>
-          </p>
-        </div>
-
-        <!-- Row 3: Sebaris (Kredensial Email di kiri, KTP & Proses di kanan) -->
-        <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px] gap-2">
-          <!-- Kiri: Tombol Modal Kredensial Email & 2FA -->
-          <div class="min-w-0 flex-1">
-            <button
-              v-if="ticket.email"
-              @click.stop="openCredentialModal(ticket)"
-              type="button"
-              class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50/90 hover:bg-blue-100 active:scale-95 text-blue-900 border border-blue-200/90 rounded text-[9.5px] font-bold transition-all max-w-full"
-            >
-              <span>🔑</span>
-              <span class="truncate font-mono max-w-[120px]">{{ ticket.email }}</span>
-              <span v-if="ticket.punya_2fa" class="bg-rose-500 text-white text-[7.5px] font-extrabold px-1 rounded-full shrink-0">
-                2FA
-              </span>
-              <span v-else-if="ticket.email === 'Dibuatkan oleh Tim LPNU'" class="bg-amber-100 text-amber-800 text-[7.5px] px-1 rounded shrink-0">
-                Buatkan
-              </span>
-              <span class="text-blue-500 text-[9px] shrink-0">↗</span>
-            </button>
-            <span v-else class="text-slate-400 text-[10px]">
-              Belum ada email
-            </span>
-          </div>
-
-          <!-- Kanan: Aksi Cepat (KTP + Klaim + Proses) -->
-          <div class="flex items-center gap-1.5 shrink-0">
-            <a
-              v-if="ticket.foto_ktp_url"
-              :href="ticket.foto_ktp_url"
-              target="_blank"
-              class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded text-[10px]"
-            >
-              KTP ↗
-            </a>
-
-            <button
-              v-if="!ticket.operator_assigned"
-              @click="store.claimTicket(ticket.id_ticket, store.currentAdminUser.value.nama)"
-              type="button"
-              class="px-2 py-0.5 bg-amber-100 active:bg-amber-200 text-amber-900 font-bold rounded text-[10px]"
-            >
-              Klaim
-            </button>
-
-            <button
-              @click="openExecuteModal(ticket)"
-              type="button"
-              class="px-2.5 py-1 bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded flex items-center gap-1 shadow-2xs text-[10px]"
-            >
-              Proses
-            </button>
-          </div>
-        </div>
-
-      </div>
-
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        <span>Keluar dari Portal Admin</span>
+      </button>
     </div>
 
     <!-- Modal Update Status -->

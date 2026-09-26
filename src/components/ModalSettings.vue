@@ -97,8 +97,8 @@
           </div>
         </div>
 
-        <!-- SECTION 2: SYSTEM INFO -->
-        <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[10px] space-y-1">
+        <!-- SECTION 2: SYSTEM INFO (Admin only) -->
+        <div v-if="store.activeRole.value === 'admin'" class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[10px] space-y-1">
           <div class="flex items-center justify-between">
             <span class="text-slate-500">Firebase Firestore:</span>
             <span class="font-bold text-emerald-700">✓ salehalpnu (Aktif)</span>
