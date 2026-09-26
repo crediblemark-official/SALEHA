@@ -239,7 +239,7 @@ function loadCachedPengumuman() {
 
 // State Reaktif Pengumuman & Konten Bantuan
 const pengumumanList = ref(loadCachedPengumuman());
-const kontenBantuanList = ref(gasService.getCachedKontenBantuan());
+const kontenBantuanList = ref(typeof gasService.getCachedKontenBantuan === 'function' ? gasService.getCachedKontenBantuan() : []);
 const isKontenBantuanLoading = ref(false);
 
 // Berlangganan real-time pengumuman dari Firestore

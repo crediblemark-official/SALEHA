@@ -222,11 +222,14 @@ export const gasService = {
       }
     }
 
+    return this.getCachedKontenBantuan();
+  },
+
+  getCachedKontenBantuan() {
     try {
       const cached = localStorage.getItem('saleha_konten_bantuan_cache');
       if (cached) return JSON.parse(cached);
     } catch (e) {}
-
     return [];
   },
 
@@ -251,11 +254,14 @@ export const gasService = {
       }
     }
 
+    return this.getCachedPengumuman();
+  },
+
+  getCachedPengumuman() {
     try {
       const cached = localStorage.getItem('saleha_pengumuman_cache');
       if (cached) return JSON.parse(cached);
     } catch (e) {}
-
     return [];
   },
 
