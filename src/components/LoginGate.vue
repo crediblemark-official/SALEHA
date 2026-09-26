@@ -121,12 +121,22 @@
           Lembaga Perekonomian Nahdlatul Ulama (LPNU)<br />
           Pengurus Cabang Nahdlatul Ulama (PCNU) Kabupaten Sumenep
         </p>
-        <p class="text-[9.5px] text-slate-400 font-medium">
-          © 2026 SALEHA · Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="text-emerald-400 font-semibold hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-400 hover:underline">crediblemark.com</a>
+        <p class="text-[9.5px] text-slate-400 font-medium flex items-center justify-center gap-1.5 flex-wrap">
+          <span>© 2026 SALEHA</span>
+          <VersionBadge @longpress="showAdminModal = true" />
+          <span>·</span>
+          <span>Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="text-emerald-400 font-semibold hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-400 hover:underline">crediblemark.com</a></span>
         </p>
       </div>
 
     </div>
+
+    <!-- Modal Jalur Login Administrator (Secret Easter Egg via Long-Press Nomor Versi) -->
+    <ModalAdminLogin
+      v-if="showAdminModal"
+      @close="showAdminModal = false"
+      @success="handleAdminLoginSuccess"
+    />
 
   </div>
 </template>
@@ -135,12 +145,19 @@
 import { ref, computed } from 'vue';
 import { useSalehaStore } from '../composables/useSalehaStore';
 import { getAuthErrorMessage } from '../services/firebase';
+import VersionBadge from './VersionBadge.vue';
+import ModalAdminLogin from './ModalAdminLogin.vue';
 
 const emit = defineEmits(['loginSuccess']);
 
 const store = useSalehaStore();
 const isLoading = ref(false);
 const errorMessage = ref('');
+const showAdminModal = ref(false);
+
+function handleAdminLoginSuccess() {
+  emit('loginSuccess');
+}
 
 const activeError = computed(() => errorMessage.value || store.authErrorMessage.value);
 

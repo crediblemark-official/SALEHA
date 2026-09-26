@@ -18,8 +18,8 @@
         </div>
       </div>
 
-      <!-- PINTU MASUK WAJIB: LOGIN DENGAN GOOGLE -->
-      <LoginGate v-else-if="!store.firebaseUser.value" />
+      <!-- PINTU MASUK WAJIB: LOGIN DENGAN GOOGLE / ADMIN -->
+      <LoginGate v-else-if="!store.firebaseUser.value && !store.isAdminBypass.value" />
 
       <!-- MAIN APP INTERFACE (Hanya bisa dibuka setelah login) -->
       <template v-else>

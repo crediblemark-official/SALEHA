@@ -1,6 +1,7 @@
 import { ref, computed, watch } from 'vue';
 import { gasService } from '../services/gasService';
-import { loginWithGoogle, logoutFirebase, subscribeToAuth, getAuthErrorMessage } from '../services/firebase';
+import { loginWithGoogle, loginWithEmailPassword, logoutFirebase, subscribeToAuth, getAuthErrorMessage } from '../services/firebase';
+import { APP_VERSION } from '../config/appInfo';
 
 const STORAGE_KEY = 'saleha_permohonan_data_v1';
 const USER_KEY = 'saleha_current_user_v1';
@@ -114,6 +115,7 @@ const INITIAL_PERMOHONAN = [
 // Reaktif Shared State
 const permohonanList = ref(loadPermohonan());
 const activeRole = ref(localStorage.getItem(ROLE_KEY) || 'umkm'); // 'umkm' | 'admin'
+const isAdminBypass = ref(localStorage.getItem('saleha_admin_bypass') === 'true');
 
 // Current UMKM Session
 const currentUmkmUser = ref(loadCurrentUser() || {
@@ -366,9 +368,97 @@ export function useSalehaStore() {
 
   async function loginGoogle() {
     isAuthLoading.value = true;
+    authErrorMessage.value = '';
     const res = await loginWithGoogle();
     isAuthLoading.value = false;
+    if (!res.success && !res.userCancelled) {
+      authErrorMessage.value = getAuthErrorMessage(res.error);
+    }
     return res;
+  }
+
+  // Login khusus Admin dengan akun Google
+  async function loginAdminGoogle() {
+    isAuthLoading.value = true;
+    authErrorMessage.value = '';
+    const res = await loginWithGoogle();
+    isAuthLoading.value = false;
+    if (res.success && res.user) {
+      setRole('admin');
+      currentAdminUser.value = {
+        id: res.user.uid,
+        email: res.user.email || 'admin@lpnu-sumenep.or.id',
+        nama: res.user.displayName || 'Admin LPNU PCNU',
+        photoURL: res.user.photoURL || '',
+        isLoggedIn: true
+      };
+    } else if (!res.userCancelled) {
+      authErrorMessage.value = getAuthErrorMessage(res.error);
+    }
+    return res;
+  }
+
+  // Login khusus Admin dengan Email & Password
+  async function loginAdminEmail(email, password) {
+    isAuthLoading.value = true;
+    authErrorMessage.value = '';
+    const cleanEmail = (email || '').trim();
+    const cleanPass = (password || '').trim();
+
+    // 1. Coba Firebase Auth email & password
+    const res = await loginWithEmailPassword(cleanEmail, cleanPass);
+    if (res.success && res.user) {
+      setRole('admin');
+      currentAdminUser.value = {
+        id: res.user.uid,
+        email: res.user.email,
+        nama: res.user.displayName || cleanEmail.split('@')[0] || 'Operator LPNU',
+        photoURL: '',
+        isLoggedIn: true
+      };
+      isAuthLoading.value = false;
+      return { success: true };
+    }
+
+    // 2. Fallback Kredensial Resmi Operator LPNU (Bila email auth belum diaktifkan di Firebase Console)
+    const isLpnuMaster = (
+      (cleanEmail === 'admin@lpnu-sumenep.or.id' || cleanEmail === 'admin' || cleanEmail === 'operator') &&
+      (cleanPass === 'saleha2026' || cleanPass === 'lpnu2026' || cleanPass === 'admin123')
+    );
+
+    if (isLpnuMaster) {
+      isAdminBypass.value = true;
+      localStorage.setItem('saleha_admin_bypass', 'true');
+      setRole('admin');
+      currentAdminUser.value = {
+        id: 'admin_lpnu_master',
+        email: 'admin@lpnu-sumenep.or.id',
+        nama: 'Tim Operator LPNU PCNU',
+        photoURL: '',
+        isLoggedIn: true
+      };
+      isAuthLoading.value = false;
+      return { success: true };
+    }
+
+    isAuthLoading.value = false;
+    authErrorMessage.value = res.error ? getAuthErrorMessage(res.error) : 'Email atau kata sandi operator salah.';
+    return { success: false, error: res.error || new Error(authErrorMessage.value) };
+  }
+
+  // Bypass Masuk Cepat Operator untuk Keperluan Lapangan / Demo
+  function loginAdminDemo() {
+    isAdminBypass.value = true;
+    localStorage.setItem('saleha_admin_bypass', 'true');
+    setRole('admin');
+    currentAdminUser.value = {
+      id: 'admin_demo_lpnu',
+      email: 'admin@lpnu-sumenep.or.id',
+      nama: 'Petugas LPNU (Mode Demo)',
+      photoURL: '',
+      isLoggedIn: true
+    };
+    return { success: true };
   }
 
   async function logout() {
@@ -379,13 +469,18 @@ export function useSalehaStore() {
       console.warn('Firebase logout warning:', e);
     }
     firebaseUser.value = null;
+    isAdminBypass.value = false;
+    localStorage.removeItem('saleha_admin_bypass');
+    setRole('umkm');
     isAuthLoading.value = false;
     return { success: true };
   }
 
   return {
+    APP_VERSION,
     permohonanList,
     activeRole,
+    isAdminBypass,
     currentUmkmUser,
     currentAdminUser,
     firebaseUser,
@@ -398,6 +493,9 @@ export function useSalehaStore() {
     setRole,
     loginUmkm,
     loginGoogle,
+    loginAdminGoogle,
+    loginAdminEmail,
+    loginAdminDemo,
     logout,
     createPermohonan,
     updateStatus,

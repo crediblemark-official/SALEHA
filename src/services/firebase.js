@@ -9,6 +9,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInWithCredential,
+  signInWithEmailAndPassword,
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
@@ -51,7 +52,17 @@ export function getAuthErrorMessage(error) {
     case 'auth/configuration-not-found':
       return 'Konfigurasi Google Identity OAuth belum lengkap di Google Cloud Console.';
     case 'auth/invalid-credential':
-      return 'Kredensial OAuth Google ditolak (401). Ini terjadi jika konfigurasi Web Client ID/Secret di Firebase belum sinkron atau status OAuth Consent Screen masih dalam pengujian (Testing).';
+      return 'Kredensial tidak valid (email atau kata sandi salah, atau kredensial OAuth ditolak).';
+    case 'auth/user-not-found':
+      return 'Akun operator dengan email ini tidak ditemukan.';
+    case 'auth/wrong-password':
+      return 'Kata sandi salah. Silakan periksa kembali.';
+    case 'auth/invalid-email':
+      return 'Format alamat email tidak valid.';
+    case 'auth/user-disabled':
+      return 'Akun pengguna ini telah dinonaktifkan oleh administrator.';
+    case 'auth/too-many-requests':
+      return 'Terlalu banyak percobaan masuk gagal. Akses dibatasi sementara demi keamanan.';
     case 'auth/network-request-failed':
     case '7':
     case 'NETWORK_ERROR':
@@ -63,7 +74,7 @@ export function getAuthErrorMessage(error) {
       if (typeof error.message === 'string' && (error.message.includes('10:') || error.message.includes('DEVELOPER_ERROR'))) {
         return 'Developer Error (10): Sertifikat SHA-1 APK belum sesuai dengan SHA-1 di Firebase Console.';
       }
-      return error.message || 'Gagal login dengan akun Google.';
+      return error.message || 'Gagal autentikasi.';
   }
 }
 
@@ -117,6 +128,19 @@ export async function loginWithGoogle() {
       }
     }
 
+    return { success: false, error };
+  }
+}
+
+/**
+ * Login khusus Admin/Operator via Email & Password
+ */
+export async function loginWithEmailPassword(email, password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return { success: true, user: userCredential.user };
+  } catch (error) {
+    console.error('Firebase Email/Password Login Error:', error);
     return { success: false, error };
   }
 }

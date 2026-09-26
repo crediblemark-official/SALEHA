@@ -11,6 +11,10 @@
             <span class="text-[9px] bg-amber-400 text-emerald-950 font-extrabold px-1.5 py-0.2 rounded-full leading-tight uppercase">
               PCNU
             </span>
+            <VersionBadge
+              @longpress="showAdminModal = true"
+              badge-class="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60"
+            />
           </div>
           <span class="text-[10px] text-emerald-200/90 leading-tight mt-0.5 font-medium">
             LPNU Sumenep
@@ -68,6 +72,7 @@
     </div>
 
     <ModalSettings :isOpen="showSettings" @close="showSettings = false" />
+    <ModalAdminLogin v-if="showAdminModal" @close="showAdminModal = false" />
   </header>
 </template>
 
@@ -75,7 +80,10 @@
 import { ref } from 'vue';
 import { useSalehaStore } from '../composables/useSalehaStore';
 import ModalSettings from './ModalSettings.vue';
+import ModalAdminLogin from './ModalAdminLogin.vue';
+import VersionBadge from './VersionBadge.vue';
 
 const store = useSalehaStore();
 const showSettings = ref(false);
+const showAdminModal = ref(false);
 </script>

@@ -136,7 +136,11 @@
 
         <!-- Copyright & Credit -->
         <div class="text-center pt-2 text-[10px] text-slate-400 space-y-0.5">
-          <p>© 2026 SALEHA · LPNU PCNU Sumenep</p>
+          <p class="flex items-center justify-center gap-1.5 flex-wrap">
+            <span>© 2026 SALEHA</span>
+            <VersionBadge @longpress="showAdminModal = true" badge-class="bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200" />
+            <span>· LPNU PCNU Sumenep</span>
+          </p>
           <p>Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-800 hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-800 hover:underline">crediblemark.com</a></p>
         </div>
 
@@ -162,12 +166,20 @@
 
     </div>
   </div>
+
+  <ModalAdminLogin
+    v-if="showAdminModal"
+    @close="showAdminModal = false"
+    @success="() => { showAdminModal = false; $emit('close'); }"
+  />
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { gasService } from '../services/gasService';
 import { useSalehaStore } from '../composables/useSalehaStore';
+import VersionBadge from './VersionBadge.vue';
+import ModalAdminLogin from './ModalAdminLogin.vue';
 
 defineProps({
   isOpen: Boolean
@@ -178,6 +190,7 @@ const emit = defineEmits(['close', 'saved']);
 const store = useSalehaStore();
 const gasUrlInput = ref(gasService.getGasUrl());
 const loadingAuth = ref(false);
+const showAdminModal = ref(false);
 
 async function handleLoginGoogle() {
   loadingAuth.value = true;

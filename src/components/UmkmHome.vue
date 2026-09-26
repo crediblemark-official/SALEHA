@@ -175,21 +175,34 @@
 
     <!-- Copyright & Credits -->
     <div class="text-center pt-2 pb-6 space-y-0.5">
-      <p class="text-[9.5px] text-slate-400 font-medium">© 2026 SALEHA · LPNU PCNU Kabupaten Sumenep</p>
+      <p class="text-[9.5px] text-slate-400 font-medium flex items-center justify-center gap-1.5 flex-wrap">
+        <span>© 2026 SALEHA</span>
+        <VersionBadge @longpress="showAdminModal = true" badge-class="bg-slate-200/70 hover:bg-slate-300 text-slate-600 border border-slate-300" />
+        <span>· LPNU PCNU Kabupaten Sumenep</span>
+      </p>
       <p class="text-[9.5px] text-slate-400">Dibuat dengan ❤️ oleh <a href="https://situsbisnis.com/@rasyiqi/" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-800 hover:underline">Rasyiqi</a> · <a href="https://crediblemark.com" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-800 hover:underline">crediblemark.com</a></p>
     </div>
+
+    <!-- Modal Jalur Login Administrator (Secret Easter Egg via Long-Press) -->
+    <ModalAdminLogin
+      v-if="showAdminModal"
+      @close="showAdminModal = false"
+    />
 
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useSalehaStore } from '../composables/useSalehaStore';
 import StatusBadge from './StatusBadge.vue';
+import VersionBadge from './VersionBadge.vue';
+import ModalAdminLogin from './ModalAdminLogin.vue';
 
 defineEmits(['switchTab']);
 
 const store = useSalehaStore();
+const showAdminModal = ref(false);
 
 const latestTicket = computed(() => {
   return store.myPermohonan.value[0] || null;
