@@ -59,7 +59,10 @@ jobs:
       - name: 🔑 Siapkan google-services.json untuk Android
         run: |
           mkdir -p android/app
-          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > android/app/google-services.json
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > android/app/google-services.json
+          # Validasi bahwa file JSON utuh dan valid
+          node -e "JSON.parse(require('fs').readFileSync('android/app/google-services.json', 'utf8'))"
+          echo "google-services.json valid dan siap."
 
       - name: 🔄 Sinkronisasi Capacitor Android
         run: npx cap sync android
